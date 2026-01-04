@@ -1,0 +1,15 @@
+# dependencies
+/node_modules
+
+# builds
+dist/
+
+# database data
+*.db
+
+# env files
+.env*
+
+# development environment files
+## vscode
+.vscode
