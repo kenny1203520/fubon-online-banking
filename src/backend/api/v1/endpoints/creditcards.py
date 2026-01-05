@@ -1,20 +1,58 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Query
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, desc
 from datetime import datetime, timezone
 
 from models.credit_card import CreditCard, CreditCardApplication, CreditCardPayment
 from models.account import Account
 from models.transaction import Transaction
+from models.user import User
 from schemas.credit_card import (
     CreditCardCreate, CreditCardApplicationResponse, CreditCardApplicationList,
     CreditCardPaymentRequest, CreditCardPaymentResponse,
     CreditCardCashAdvanceRequest, CreditCardCashAdvanceResponse
 )
 from core.database import get_session
+from core.auth import get_current_user
 
 router = APIRouter()
 
-@router.post('/apply', status_code=status.HTTP_201_CREATED)
+@router.get('/', name="列出信用卡申請", response_model=CreditCardApplicationList)
+async def list_creditcards(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1),
+    session: Session = Depends(get_session)
+):
+    """
+    List all credit card applications with pagination (列出所有信用卡申請，帶分頁)  
+    Parameters:
+    - page: Page number (頁碼)
+    - per_page: Number of items per page (每頁項目數)
+    """
+    offset = (page - 1) * per_page
+    
+    # Get total count
+    total = session.scalar(select(func.count()).select_from(CreditCardApplication)) or 0
+    
+    # Get applications
+    statement = (
+        select(CreditCardApplication)
+        .order_by(desc(CreditCardApplication.id))
+        .offset(offset)
+        .limit(per_page)
+    )
+    applications = session.exec(statement).all()
+    
+    total_pages = (total + per_page - 1) // per_page if per_page else 0
+    
+    return {
+        'items': [CreditCardApplicationResponse.from_orm(app) for app in applications],
+        'page': page,
+        'per_page': per_page,
+        'total': total,
+        'total_pages': total_pages
+    }
+
+@router.post('/apply', name="申請信用卡", status_code=status.HTTP_201_CREATED)
 async def apply_creditcard(request: CreditCardCreate, session: Session = Depends(get_session)):
     """
     Apply for a credit card (申請信用卡)  
@@ -42,51 +80,31 @@ async def apply_creditcard(request: CreditCardCreate, session: Session = Depends
         'message': '信用卡申請已收到'
     }
 
-@router.get('', response_model=CreditCardApplicationList)
-async def list_creditcards(
-    page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1),
-    session: Session = Depends(get_session)
-):
+@router.get("/{card_id}", name="取得信用卡詳情", status_code=status.HTTP_200_OK)
+async def get_creditcard(card_id: int, session: Session = Depends(get_session)):
     """
-    List all credit card applications with pagination (列出所有信用卡申請，帶分頁)  
+    get creditcard details (取得信用卡詳情)  
     Parameters:
-    - page: Page number (頁碼)
-    - per_page: Number of items per page (每頁項目數)
+    - card_id: ID of the credit card (信用卡ID)
     """
-    offset = (page - 1) * per_page
+    card = session.get(CreditCard, card_id)
     
-    # Get total count
-    total = session.exec(func.select(func.count(CreditCardApplication.id))).one()
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='card not found'
+        )
     
-    # Get applications
-    statement = (
-        select(CreditCardApplication)
-        .order_by(CreditCardApplication.id.desc())
-        .offset(offset)
-        .limit(per_page)
-    )
-    applications = session.exec(statement).all()
-    
-    total_pages = (total + per_page - 1) // per_page if per_page else 0
-    
-    return {
-        'items': [CreditCardApplicationResponse.from_orm(app) for app in applications],
-        'page': page,
-        'per_page': per_page,
-        'total': total,
-        'total_pages': total_pages
-    }
+    return card
 
-@router.post('/pay', response_model=CreditCardPaymentResponse)
-async def creditcard_pay(request: CreditCardPaymentRequest, session: Session = Depends(get_session)):
+@router.post('/{card_id}/pay', name="信用卡付款", response_model=CreditCardPaymentResponse)
+async def creditcard_pay(card_id: int, request: CreditCardPaymentRequest, session: Session = Depends(get_session)):
     """
     Make a credit card payment (信用卡付款)  
     Parameters:
-    - card_id: ID of the credit card to pay (要付款的信用卡ID)
     - amount: Payment amount (付款金額)
     """
-    card = session.get(CreditCard, request.card_id)
+    card = session.get(CreditCard, card_id)
     
     if not card:
         raise HTTPException(
@@ -99,7 +117,7 @@ async def creditcard_pay(request: CreditCardPaymentRequest, session: Session = D
     
     # Record payment
     payment = CreditCardPayment(
-        card_id=request.card_id,
+        card_id=card_id,
         amount=request.amount,
         created_at=now
     )
@@ -114,7 +132,7 @@ async def creditcard_pay(request: CreditCardPaymentRequest, session: Session = D
         'new_balance_due': new_due
     }
 
-@router.post('/cash_advance', response_model=CreditCardCashAdvanceResponse)
+@router.post('/cash_advance', name="信用卡現金預借", response_model=CreditCardCashAdvanceResponse)
 async def creditcard_cash_advance(
     request: CreditCardCashAdvanceRequest,
     session: Session = Depends(get_session)
