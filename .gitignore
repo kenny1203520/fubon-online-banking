@@ -1,14 +1,18 @@
 # dependencies
 /node_modules
+__pycache__
 
 # builds
 dist/
 
 # database data
 *.db
+src/backend/data/
 
 # env files
 .env*
+*.env
+!.env.example
 
 # development environment files
 ## vscode

@@ -157,8 +157,8 @@ fubon-online-banking/
 ## 🚀 快速開始
 
 ### 環境需求
-- Python 3.8+
-- Node.js 14+ (前端開發)
+- Python 3.9+
+- Node.js 18+ (前端開發)
 - Docker (容器化部署)
 - PostgreSQL 12+ (資料庫)
 
@@ -172,7 +172,9 @@ cd fubon-online-banking
 
 2. **安裝依賴**
 ```bash
-pip install -r requirements.txt
+cd src/backend
+pip install -r requirements.txt  # 後端依賴
+cd ../frontend
 npm install  # 前端依賴
 ```
 
@@ -182,19 +184,13 @@ cp .env.example .env
 # 編輯 .env 檔案，設定資料庫連線、API金鑰等
 ```
 
-4. **初始化資料庫**
+4. **啟動開發伺服器**
 ```bash
-python manage.py migrate
-python manage.py init_db
+python app.py # 後端伺服器
+npm start     # 前端開發伺服器
 ```
 
-5. **啟動開發伺服器**
-```bash
-python manage.py runserver
-npm start  # 前端開發伺服器
-```
-
-訪問 `http://localhost:8000` 查看應用
+訪問 `http://localhost:5173` 查看應用
 
 ---
 
@@ -202,13 +198,13 @@ npm start  # 前端開發伺服器
 
 ### 執行所有測試
 ```bash
-python manage.py test
+python app.py test
 npm test
 ```
 
 ### 執行特定測試套件
 ```bash
-python manage.py test accounts.tests
+python app.py test accounts.tests
 npm test -- --testPathPattern=auth
 ```
 
