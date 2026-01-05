@@ -1,9 +1,15 @@
 from flask import Flask, request, jsonify, g
 import sqlite3
-from werkzeug.security import generate_password_hash
-from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
+import secrets
+import os
+from datetime import datetime, timedelta
 
-DB_PATH = "./src/backend/database.db"
+# store database next to this file so relative cwd won't break
+BASE_DIR = os.path.dirname(__file__)
+DB_PATH = os.path.join(BASE_DIR, 'database.db')
+# ensure folder exists
+os.makedirs(BASE_DIR, exist_ok=True)
 
 app = Flask(__name__)
 
@@ -48,7 +54,56 @@ def init_db():
         created_at TEXT
     )
     ''')
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token TEXT UNIQUE NOT NULL,
+        created_at TEXT,
+        expires_at TEXT,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    )
+    ''')
     db.commit()
+
+
+def create_session(user_id, hours_valid=24):
+    db = get_db()
+    cur = db.cursor()
+    token = secrets.token_urlsafe(32)
+    created = datetime.utcnow()
+    expires = created + timedelta(hours=hours_valid)
+    cur.execute('''INSERT INTO sessions (user_id, token, created_at, expires_at) VALUES (?,?,?,?)''', (
+        user_id, token, created.isoformat(), expires.isoformat()
+    ))
+    db.commit()
+    return token
+
+
+def get_user_by_token(token):
+    if not token:
+        return None
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('''SELECT u.* FROM users u JOIN sessions s ON s.user_id = u.id WHERE s.token = ?''', (token,))
+    user = cur.fetchone()
+    if not user:
+        return None
+    # verify not expired
+    cur.execute('SELECT expires_at FROM sessions WHERE token = ?', (token,))
+    row = cur.fetchone()
+    if not row:
+        return None
+    try:
+        expires = datetime.fromisoformat(row['expires_at'])
+    except Exception:
+        return None
+    if datetime.utcnow() > expires:
+        # session expired -> remove
+        cur.execute('DELETE FROM sessions WHERE token = ?', (token,))
+        db.commit()
+        return None
+    return user
 
 @app.teardown_appcontext
 def close_connection(exception):
@@ -116,7 +171,100 @@ def register_user():
     user_id = cur.lastrowid
     return jsonify({'user_id': user_id, 'username': username, 'message': '註冊成功'}), 201
 
+
+@app.route('/api/users/login', methods=['POST'])
+def login_user():
+    data = request.get_json() or {}
+    required = ['username', 'password']
+    if not all(k in data for k in required):
+        return jsonify({'error': 'missing required fields'}), 400
+    username = data.get('username')
+    password = data.get('password')
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('SELECT * FROM users WHERE username = ?', (username,))
+    user = cur.fetchone()
+    if not user or not check_password_hash(user['password_hash'], password):
+        return jsonify({'error': 'invalid credentials'}), 401
+    token = create_session(user['id'])
+    return jsonify({'token': token, 'user_id': user['id'], 'username': user['username'], 'message': '登入成功'}), 200
+
+
+@app.route('/api/users/logout', methods=['POST'])
+def logout_user():
+    # Accept token via Authorization header or JSON body
+    auth = request.headers.get('Authorization', '')
+    token = None
+    if auth.startswith('Bearer '):
+        token = auth.split(' ', 1)[1]
+    else:
+        data = request.get_json(silent=True) or {}
+        token = data.get('token')
+    if not token:
+        return jsonify({'error': 'missing token'}), 400
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('DELETE FROM sessions WHERE token = ?', (token,))
+    db.commit()
+    if cur.rowcount == 0:
+        return jsonify({'error': 'invalid token'}), 401
+    return jsonify({'message': '登出成功'}), 200
+
+
+@app.route('/api/accounts', methods=['GET'])
+def list_accounts():
+    try:
+        page = int(request.args.get('page', 1))
+    except ValueError:
+        page = 1
+    try:
+        per_page = int(request.args.get('per_page', 10))
+    except ValueError:
+        per_page = 10
+    if page < 1:
+        page = 1
+    if per_page < 1:
+        per_page = 10
+    offset = (page - 1) * per_page
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('SELECT COUNT(*) AS cnt FROM accounts')
+    total = cur.fetchone()['cnt']
+    cur.execute('SELECT * FROM accounts ORDER BY id DESC LIMIT ? OFFSET ?', (per_page, offset))
+    rows = cur.fetchall()
+    items = [dict(r) for r in rows]
+    total_pages = (total + per_page - 1) // per_page if per_page else 0
+    return jsonify({'items': items, 'page': page, 'per_page': per_page, 'total': total, 'total_pages': total_pages}), 200
+
+
+@app.route('/api/creditcards', methods=['GET'])
+def list_creditcards():
+    try:
+        page = int(request.args.get('page', 1))
+    except ValueError:
+        page = 1
+    try:
+        per_page = int(request.args.get('per_page', 10))
+    except ValueError:
+        per_page = 10
+    if page < 1:
+        page = 1
+    if per_page < 1:
+        per_page = 10
+    offset = (page - 1) * per_page
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('SELECT COUNT(*) AS cnt FROM credit_card_applications')
+    total = cur.fetchone()['cnt']
+    cur.execute('SELECT * FROM credit_card_applications ORDER BY id DESC LIMIT ? OFFSET ?', (per_page, offset))
+    rows = cur.fetchall()
+    items = [dict(r) for r in rows]
+    total_pages = (total + per_page - 1) // per_page if per_page else 0
+    return jsonify({'items': items, 'page': page, 'per_page': per_page, 'total': total, 'total_pages': total_pages}), 200
+
 if __name__ == '__main__':
     with app.app_context():
         init_db()
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    # Respect FLASK_DEBUG environment variable; default to False for safety
+    debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)

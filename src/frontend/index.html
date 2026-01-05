@@ -45,31 +45,88 @@
         <pre id="register-result"></pre>
     </section>
 
+    <section>
+        <h2>登入 / 登出</h2>
+        <form id="login-form">
+            <input name="username" placeholder="帳號" required />
+            <input name="password" type="password" placeholder="密碼" required />
+            <button type="submit">登入</button>
+        </form>
+        <button id="logout-btn">登出</button>
+        <div id="auth-status">未登入</div>
+        <pre id="login-result"></pre>
+    </section>
+
     <script>
-        const api = (path, data) => fetch(path, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
-        }).then(r => r.json().then(js => ({ status: r.status, body: js })).catch(() => ({ status: r.status }))).catch(e => ({ error: e.message }));
+        const getToken = () => localStorage.getItem('token');
+        const setToken = t => { if (t) localStorage.setItem('token', t); else localStorage.removeItem('token'); };
+
+        const api = async (path, data) => {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = getToken();
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            try {
+                const res = await fetch(path, { method: 'POST', headers, body: JSON.stringify(data) });
+                try {
+                    const js = await res.json();
+                    return { status: res.status, body: js };
+                } catch (e) {
+                    return { status: res.status };
+                }
+            } catch (e) {
+                return { error: e.message };
+            }
+        };
+
+        function updateAuthStatus() {
+            const token = getToken();
+            const el = document.getElementById('auth-status');
+            if (!token) { el.textContent = '未登入'; document.getElementById('logout-btn').style.display = 'inline-block'; return; }
+            el.textContent = '已登入（有 token）';
+        }
 
         document.getElementById('open-account-form').addEventListener('submit', async e => {
             e.preventDefault();
             const f = e.target; const data = { full_name: f.full_name.value, id_number: f.id_number.value, email: f.email.value, initial_deposit: Number(f.initial_deposit.value) };
-            const res = await api('/api/accounts/open', data);
+            const res = await api('http://localhost:5000'+'/api/accounts/open', data);
             document.getElementById('open-account-result').textContent = JSON.stringify(res, null, 2);
         });
 
         document.getElementById('cc-form').addEventListener('submit', async e => {
             e.preventDefault();
             const f = e.target; const data = { full_name: f.full_name.value, id_number: f.id_number.value, annual_income: Number(f.annual_income.value), card_type: f.card_type.value };
-            const res = await api('/api/creditcards/apply', data);
+            const res = await api('http://localhost:5000'+'/api/creditcards/apply', data);
             document.getElementById('cc-result').textContent = JSON.stringify(res, null, 2);
         });
 
         document.getElementById('register-form').addEventListener('submit', async e => {
             e.preventDefault();
             const f = e.target; const data = { username: f.username.value, password: f.password.value, email: f.email.value };
-            const res = await api('/api/users/register', data);
+            const res = await api('http://localhost:5000'+'/api/users/register', data);
             document.getElementById('register-result').textContent = JSON.stringify(res, null, 2);
         });
+
+        document.getElementById('login-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const f = e.target; const data = { username: f.username.value, password: f.password.value };
+            const res = await api('http://localhost:5000'+'/api/users/login', data);
+            document.getElementById('login-result').textContent = JSON.stringify(res, null, 2);
+            if (res && res.status === 200 && res.body && res.body.token) {
+                setToken(res.body.token);
+                updateAuthStatus();
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', async e => {
+            const res = await api('/api/users/logout', {});
+            // If server returns 200 or we get connection, clear local token anyway
+            setToken(null);
+            updateAuthStatus();
+            document.getElementById('login-result').textContent = JSON.stringify(res, null, 2);
+        });
+
+        // init
+        updateAuthStatus();
     </script>
 </body>
 
