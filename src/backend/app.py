@@ -34,6 +34,28 @@ def init_db():
         created_at TEXT
     )
     ''')
+    # if upgrading an existing DB, add new columns safely
+    try:
+        cur.execute("ALTER TABLE accounts ADD COLUMN cashless_enabled INTEGER DEFAULT 0")
+    except Exception:
+        pass
+    # ensure transactions table has expected columns for newer code
+    try:
+        cur.execute("ALTER TABLE transactions ADD COLUMN related_account INTEGER")
+    except Exception:
+        pass
+    try:
+        cur.execute("ALTER TABLE transactions ADD COLUMN currency TEXT DEFAULT 'TWD'")
+    except Exception:
+        pass
+    try:
+        cur.execute("ALTER TABLE transactions ADD COLUMN description TEXT")
+    except Exception:
+        pass
+    try:
+        cur.execute("ALTER TABLE transactions ADD COLUMN created_at TEXT")
+    except Exception:
+        pass
     cur.execute('''
     CREATE TABLE IF NOT EXISTS credit_card_applications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,6 +65,26 @@ def init_db():
         card_type TEXT,
         status TEXT DEFAULT 'received',
         created_at TEXT
+    )
+    ''')
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS credit_cards (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        card_number TEXT UNIQUE,
+        limit_amount REAL DEFAULT 0,
+        balance_due REAL DEFAULT 0,
+        created_at TEXT,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    )
+    ''')
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS credit_card_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        card_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        created_at TEXT,
+        FOREIGN KEY(card_id) REFERENCES credit_cards(id)
     )
     ''')
     cur.execute('''
@@ -61,6 +103,39 @@ def init_db():
         token TEXT UNIQUE NOT NULL,
         created_at TEXT,
         expires_at TEXT,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    )
+    ''')
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        amount REAL NOT NULL,
+        currency TEXT DEFAULT 'TWD',
+        related_account INTEGER,
+        description TEXT,
+        created_at TEXT,
+        FOREIGN KEY(account_id) REFERENCES accounts(id)
+    )
+    ''')
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS investments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER NOT NULL,
+        product_id TEXT,
+        amount REAL NOT NULL,
+        created_at TEXT,
+        FOREIGN KEY(account_id) REFERENCES accounts(id)
+    )
+    ''')
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS loans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        status TEXT DEFAULT 'applied',
+        created_at TEXT,
         FOREIGN KEY(user_id) REFERENCES users(id)
     )
     ''')
@@ -261,6 +336,215 @@ def list_creditcards():
     items = [dict(r) for r in rows]
     total_pages = (total + per_page - 1) // per_page if per_page else 0
     return jsonify({'items': items, 'page': page, 'per_page': per_page, 'total': total, 'total_pages': total_pages}), 200
+
+
+@app.route('/api/accounts/balance', methods=['POST'])
+def account_balance():
+    data = request.get_json() or {}
+    account_id = data.get('account_id')
+    if not account_id:
+        return jsonify({'error': 'missing account_id'}), 400
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('SELECT id, balance, cashless_enabled FROM accounts WHERE id = ?', (account_id,))
+    row = cur.fetchone()
+    if not row:
+        return jsonify({'error': 'account not found'}), 404
+    return jsonify({'account_id': row['id'], 'balance': row['balance'], 'cashless_enabled': bool(row['cashless_enabled'])}), 200
+
+
+@app.route('/api/accounts/transactions', methods=['POST'])
+def account_transactions():
+    data = request.get_json() or {}
+    account_id = data.get('account_id')
+    if not account_id:
+        return jsonify({'error': 'missing account_id'}), 400
+    frm = data.get('from')
+    to = data.get('to')
+    db = get_db()
+    cur = db.cursor()
+    q = 'SELECT * FROM transactions WHERE account_id = ?'
+    params = [account_id]
+    if frm:
+        q += ' AND created_at >= ?'
+        params.append(frm)
+    if to:
+        q += ' AND created_at <= ?'
+        params.append(to)
+    q += ' ORDER BY id DESC LIMIT 100'
+    cur.execute(q, tuple(params))
+    rows = cur.fetchall()
+    items = [dict(r) for r in rows]
+    return jsonify({'items': items}), 200
+
+
+@app.route('/api/accounts/transfer', methods=['POST'])
+def account_transfer():
+    data = request.get_json() or {}
+    required = ['from_account', 'to_account', 'amount']
+    if not all(k in data for k in required):
+        return jsonify({'error': 'missing required fields'}), 400
+    try:
+        amount = float(data.get('amount'))
+    except Exception:
+        return jsonify({'error': 'invalid amount'}), 400
+    if amount <= 0:
+        return jsonify({'error': 'amount must be positive'}), 400
+    from_id = data.get('from_account')
+    to_id = data.get('to_account')
+    currency = data.get('currency') or 'TWD'
+    db = get_db()
+    cur = db.cursor()
+    # fetch balances
+    cur.execute('SELECT id, balance FROM accounts WHERE id = ?', (from_id,))
+    src = cur.fetchone()
+    cur.execute('SELECT id, balance FROM accounts WHERE id = ?', (to_id,))
+    dst = cur.fetchone()
+    if not src or not dst:
+        return jsonify({'error': 'source or destination account not found'}), 404
+    if src['balance'] < amount:
+        return jsonify({'error': 'insufficient funds'}), 400
+    # perform transfer
+    new_src = src['balance'] - amount
+    new_dst = dst['balance'] + amount
+    cur.execute('UPDATE accounts SET balance = ? WHERE id = ?', (new_src, from_id))
+    cur.execute('UPDATE accounts SET balance = ? WHERE id = ?', (new_dst, to_id))
+    now = datetime.utcnow().isoformat()
+    cur.execute('INSERT INTO transactions (account_id, type, amount, currency, related_account, description, created_at) VALUES (?,?,?,?,?,?,?)', (from_id, 'debit', -amount, currency, to_id, 'transfer out', now))
+    cur.execute('INSERT INTO transactions (account_id, type, amount, currency, related_account, description, created_at) VALUES (?,?,?,?,?,?,?)', (to_id, 'credit', amount, currency, from_id, 'transfer in', now))
+    db.commit()
+    return jsonify({'message': 'transfer completed', 'from_new_balance': new_src, 'to_new_balance': new_dst}), 200
+
+
+@app.route('/api/accounts/cashless_withdraw', methods=['POST'])
+def account_cashless():
+    data = request.get_json() or {}
+    account_id = data.get('account_id')
+    enabled = data.get('enabled')
+    if account_id is None or enabled is None:
+        return jsonify({'error': 'missing account_id or enabled flag'}), 400
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('UPDATE accounts SET cashless_enabled = ? WHERE id = ?', (1 if enabled else 0, account_id))
+    db.commit()
+    return jsonify({'account_id': account_id, 'cashless_enabled': bool(enabled)}), 200
+
+
+@app.route('/api/investments/query', methods=['POST'])
+def investments_query():
+    data = request.get_json() or {}
+    account_id = data.get('account_id')
+    db = get_db()
+    cur = db.cursor()
+    if account_id:
+        cur.execute('SELECT * FROM investments WHERE account_id = ? ORDER BY id DESC', (account_id,))
+    else:
+        cur.execute('SELECT * FROM investments ORDER BY id DESC LIMIT 100')
+    rows = cur.fetchall()
+    items = [dict(r) for r in rows]
+    return jsonify({'items': items}), 200
+
+
+@app.route('/api/investments/purchase', methods=['POST'])
+def investments_purchase():
+    data = request.get_json() or {}
+    required = ['account_id', 'product_id', 'amount']
+    if not all(k in data for k in required):
+        return jsonify({'error': 'missing required fields'}), 400
+    try:
+        amount = float(data.get('amount'))
+    except Exception:
+        return jsonify({'error': 'invalid amount'}), 400
+    account_id = data.get('account_id')
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('SELECT balance FROM accounts WHERE id = ?', (account_id,))
+    acc = cur.fetchone()
+    if not acc:
+        return jsonify({'error': 'account not found'}), 404
+    if acc['balance'] < amount:
+        return jsonify({'error': 'insufficient funds'}), 400
+    # deduct and record
+    new_bal = acc['balance'] - amount
+    cur.execute('UPDATE accounts SET balance = ? WHERE id = ?', (new_bal, account_id))
+    now = datetime.utcnow().isoformat()
+    cur.execute('INSERT INTO investments (account_id, product_id, amount, created_at) VALUES (?,?,?,?)', (account_id, data.get('product_id'), amount, now))
+    cur.execute('INSERT INTO transactions (account_id, type, amount, currency, description, created_at) VALUES (?,?,?,?,?,?)', (account_id, 'debit', -amount, 'TWD', 'investment purchase', now))
+    db.commit()
+    return jsonify({'message': 'purchase successful', 'new_balance': new_bal}), 200
+
+
+@app.route('/api/creditcards/pay', methods=['POST'])
+def creditcard_pay():
+    data = request.get_json() or {}
+    required = ['user_id', 'card_id', 'amount']
+    if not all(k in data for k in required):
+        return jsonify({'error': 'missing required fields'}), 400
+    try:
+        amount = float(data.get('amount'))
+    except Exception:
+        return jsonify({'error': 'invalid amount'}), 400
+    card_id = data.get('card_id')
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('SELECT balance_due FROM credit_cards WHERE id = ?', (card_id,))
+    card = cur.fetchone()
+    if not card:
+        return jsonify({'error': 'card not found'}), 404
+    new_due = max(0.0, card['balance_due'] - amount)
+    now = datetime.utcnow().isoformat()
+    cur.execute('UPDATE credit_cards SET balance_due = ? WHERE id = ?', (new_due, card_id))
+    cur.execute('INSERT INTO credit_card_payments (card_id, amount, created_at) VALUES (?,?,?)', (card_id, amount, now))
+    db.commit()
+    return jsonify({'message': 'payment recorded', 'new_balance_due': new_due}), 200
+
+
+@app.route('/api/creditcards/cash_advance', methods=['POST'])
+def creditcard_cash_advance():
+    data = request.get_json() or {}
+    required = ['card_id', 'amount']
+    if not all(k in data for k in required):
+        return jsonify({'error': 'missing required fields'}), 400
+    try:
+        amount = float(data.get('amount'))
+    except Exception:
+        return jsonify({'error': 'invalid amount'}), 400
+    card_id = data.get('card_id')
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('SELECT balance_due, limit_amount FROM credit_cards WHERE id = ?', (card_id,))
+    card = cur.fetchone()
+    if not card:
+        return jsonify({'error': 'card not found'}), 404
+    # allow cash advance but not exceed limit (simple logic)
+    if card['balance_due'] + amount > card['limit_amount']:
+        return jsonify({'error': 'exceeds card limit'}), 400
+    new_due = card['balance_due'] + amount
+    now = datetime.utcnow().isoformat()
+    cur.execute('UPDATE credit_cards SET balance_due = ? WHERE id = ?', (new_due, card_id))
+    cur.execute('INSERT INTO transactions (account_id, type, amount, currency, description, created_at) VALUES (?,?,?,?,?,?)', (None, 'cash_advance', amount, 'TWD', f'cash advance card {card_id}', now))
+    db.commit()
+    return jsonify({'message': 'cash advance processed', 'new_balance_due': new_due}), 200
+
+
+@app.route('/api/loans/apply', methods=['POST'])
+def loans_apply():
+    data = request.get_json() or {}
+    required = ['user_id', 'amount']
+    if not all(k in data for k in required):
+        return jsonify({'error': 'missing required fields'}), 400
+    try:
+        amount = float(data.get('amount'))
+    except Exception:
+        return jsonify({'error': 'invalid amount'}), 400
+    user_id = data.get('user_id')
+    db = get_db()
+    cur = db.cursor()
+    now = datetime.utcnow().isoformat()
+    cur.execute('INSERT INTO loans (user_id, amount, status, created_at) VALUES (?,?,?,?)', (user_id, amount, 'applied', now))
+    db.commit()
+    loan_id = cur.lastrowid
+    return jsonify({'loan_id': loan_id, 'status': 'applied', 'message': '貸款申請已提交'}), 201
 
 if __name__ == '__main__':
     with app.app_context():

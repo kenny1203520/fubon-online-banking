@@ -10,6 +10,36 @@ const router = createRouter({
       component: HomeView,
     },
     {
+      path: '/legacy',
+      name: 'legacy',
+      component: () => import('../views/LegacyIndex.vue'),
+    },
+    {
+      path: '/accounts',
+      name: 'accounts',
+      component: () => import('../views/Accounts.vue'),
+    },
+    {
+      path: '/transactions',
+      name: 'transactions',
+      component: () => import('../views/Transactions.vue'),
+    },
+    {
+      path: '/investments',
+      name: 'investments',
+      component: () => import('../views/Investments.vue'),
+    },
+    {
+      path: '/creditcards',
+      name: 'creditcards',
+      component: () => import('../views/Creditcards.vue'),
+    },
+    {
+      path: '/loans',
+      name: 'loans',
+      component: () => import('../views/Loans.vue'),
+    },
+    {
       path: '/about',
       name: 'about',
       // route level code-splitting
