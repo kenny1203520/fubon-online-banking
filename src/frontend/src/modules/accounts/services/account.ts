@@ -1,0 +1,45 @@
+import apiClient from '@/shared/services/api'
+import type {
+  AccountCreate,
+  AccountResponse,
+  AccountList,
+  BalanceResponse,
+  CashlessResponse,
+  OpenAccountResponse,
+  TransactionList,
+  TransactionFilters,
+} from '../types'
+
+export const accountService = {
+  // 取得所有帳戶列表（分頁）
+  getAccounts: (page: number = 1, perPage: number = 10) =>
+    apiClient.get<AccountList>('/accounts', { params: { page, per_page: perPage } }),
+
+  // 取得單一帳戶資訊
+  getAccountById: (id: number) => apiClient.get<AccountResponse>(`/accounts/${id}`),
+
+  // 開戶申請
+  openAccount: (data: AccountCreate) => apiClient.post<OpenAccountResponse>('/accounts/open', data),
+
+  // 查詢帳戶餘額
+  getBalance: (accountId: number) =>
+    apiClient.post<BalanceResponse>('/accounts/balance', { account_id: accountId }),
+
+  // 設定無現金提款功能
+  setCashless: (accountId: number, enabled: boolean) =>
+    apiClient.post<CashlessResponse>('/accounts/cashless', { account_id: accountId, enabled }),
+
+  // 取得帳戶交易紀錄
+  getAccountTransactions: (accountId: number, filters?: TransactionFilters) =>
+    apiClient.post<TransactionList>('/accounts/transactions', {
+      account_id: accountId,
+      ...filters,
+    }),
+
+  // 更新帳戶資訊（如果後端有實作）
+  updateAccount: (id: number, data: Partial<AccountResponse>) =>
+    apiClient.put<AccountResponse>(`/accounts/${id}`, data),
+
+  // 刪除/關閉帳戶（如果後端有實作）
+  deleteAccount: (id: number) => apiClient.delete(`/accounts/${id}`),
+}
