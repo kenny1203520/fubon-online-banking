@@ -1,6 +1,8 @@
 // Account Types
 export interface Account {
   id: number
+  account_number: string
+  account_name: string
   full_name: string
   id_number: string
   email?: string
