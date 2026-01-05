@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header
 from sqlmodel import Session, select
 from datetime import datetime, timedelta, timezone
 from models.user import User, SessionModel
@@ -87,3 +87,31 @@ def verify_token(token: str, session: SessionDep) -> User:
             detail="Invalid or expired token"
         )
     return user
+
+def get_current_user(
+    authorization: Optional[str] = Header(None),
+    session: Session = Depends(get_session)
+) -> User:
+    """
+    Get current authenticated user from Authorization header. (從Authorization標頭獲取當前認證使用者)
+    Expects: Authorization: Bearer <token>
+    
+    Raises:
+    - HTTPException if token is missing or invalid
+    """
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing authorization header"
+        )
+    
+    # Extract token from "Bearer <token>"
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header format"
+        )
+    
+    token = parts[1]
+    return verify_token(token, session)
