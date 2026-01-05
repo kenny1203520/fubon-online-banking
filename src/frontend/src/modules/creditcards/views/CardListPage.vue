@@ -1,0 +1,23 @@
+<script setup lang="ts">
+</script>
+
+<template>
+  <div class="page-wrapper">
+    <div class="page-header">
+      <h1>信用卡</h1>
+      <p>管理您的信用卡</p>
+    </div>
+    <div class="page-content">
+      <div class="placeholder">信用卡列表頁面 - 開發中</div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.page-wrapper { padding: 20px; }
+.page-header { margin-bottom: 30px; }
+.page-header h1 { margin: 0; font-size: 28px; color: #333; }
+.page-header p { margin: 8px 0 0 0; color: #999; font-size: 14px; }
+.page-content { background: white; padding: 24px; border-radius: 8px; border: 1px solid #e0e0e0; }
+.placeholder { color: #999; text-align: center; padding: 60px 40px; }
+</style>
