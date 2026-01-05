@@ -17,3 +17,5 @@ src/backend/data/
 # development environment files
 ## vscode
 .vscode
+
+.venv/
