@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/modules/auth/store/auth'
+import { useAuthStore } from '@/modules/auth/stores/auth'
 import Alert from '@/shared/Alert.vue'
 
 const router = useRouter()

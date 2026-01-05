@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAccountStore } from '@/modules/accounts/store/account'
+import { useAccountStore } from '@/modules/accounts/stores/account'
 import Alert from '@/shared/Alert.vue'
 import LoadingSpinner from '@/shared/LoadingSpinner.vue'
 
