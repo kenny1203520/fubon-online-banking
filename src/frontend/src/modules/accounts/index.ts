@@ -1,5 +1,5 @@
 // Export store
-export { useAccountStore } from './store/account'
+export { useAccountStore } from './stores/account'
 
 // Export services
 export { accountService } from './services/account'

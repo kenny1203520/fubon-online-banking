@@ -1,5 +1,5 @@
 // Export store
-export { useAuthStore } from './store/auth'
+export { useAuthStore } from './stores/auth'
 
 // Export services
 export { authService } from './services/auth'
