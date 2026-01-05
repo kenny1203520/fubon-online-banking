@@ -58,5 +58,6 @@ if __name__ == "__main__":
     uvicorn.run(
         app,
         port=5000,
-        loop="asyncio"  # Use asyncio loop instead of default on Windows
+        loop="asyncio",
+        log_level="info"
     )
