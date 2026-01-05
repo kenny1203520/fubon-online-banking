@@ -13,7 +13,7 @@ from core.auth import create_user_session, get_user_by_token
 
 router = APIRouter()
 
-@router.post('/login', response_model=UserLoginResponse)
+@router.post('/login', name="使用者登入", status_code=status.HTTP_200_OK, response_model=UserLoginResponse)
 async def login(request: UserLoginRequest, session: Session = Depends(get_session)):
     """
     User login endpoint. (使用者登入端點)  
@@ -54,7 +54,7 @@ async def login(request: UserLoginRequest, session: Session = Depends(get_sessio
         'code': 200
     } # 返回登入成功訊息
 
-@router.post('/logout', response_model=UserLogoutResponse)
+@router.post('/logout', name="使用者登出", status_code=status.HTTP_200_OK, response_model=UserLogoutResponse)
 async def logout(request: UserLogoutRequest, session: Session = Depends(get_session)):
     """
     User logout endpoint. (使用者登出端點)  
@@ -84,7 +84,7 @@ async def logout(request: UserLogoutRequest, session: Session = Depends(get_sess
         'code': 200
     } # 返回登出成功訊息
 
-@router.post('/register', status_code=status.HTTP_201_CREATED, response_model=UserRegisterResponse)
+@router.post('/register', name="使用者註冊", status_code=status.HTTP_201_CREATED, response_model=UserRegisterResponse)
 async def register(request: UserRegisterRequest, session: Session = Depends(get_session)):
     """
     User registration endpoint. (使用者註冊端點)  
