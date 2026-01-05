@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .endpoints import auth, accounts, creditcards, investments, loans
+from api.v1.endpoints import auth, accounts, creditcards, investments, loans, utilities, transactions
 
 api_router = APIRouter()
 
@@ -19,3 +19,9 @@ api_router.include_router(investments.router, prefix="/investments", tags=["投�
 
 # Loan management routes (貸款管理路由)
 api_router.include_router(loans.router, prefix="/loans", tags=["貸款管理"])
+
+# Transaction management routes (交易管理路由)
+api_router.include_router(transactions.router, prefix="/transactions", tags=["交易管理"])
+
+# Utilities management routes (生活繳費路由)
+api_router.include_router(utilities.router, prefix="/utilities", tags=["生活繳費"])
