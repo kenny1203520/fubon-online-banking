@@ -18,7 +18,7 @@ async def login(request: UserLoginRequest, session: Session = Depends(get_sessio
     """
     User login endpoint. (使用者登入端點)  
     Validates user credentials and returns a session token upon successful authentication.
-    (驗證使用者憑證，並在成功驗證後返回session token。)
+    (驗證使用者憑證，並在成功驗證後返回session token。)  
     Parameters:
     - username: The username of the user (使用者名稱)
     - password: The password of the user (使用者密碼)
@@ -59,7 +59,7 @@ async def logout(request: UserLogoutRequest, session: Session = Depends(get_sess
     """
     User logout endpoint. (使用者登出端點)  
     Invalidates the user session associated with the provided token.
-    (使該令牌對應的使用者會話失效。)
+    (使該令牌對應的使用者會話失效。)  
     Parameters:
     - token: The session token to invalidate (要使無效的session token)
     """
@@ -89,7 +89,7 @@ async def register(request: UserRegisterRequest, session: Session = Depends(get_
     """
     User registration endpoint. (使用者註冊端點)  
     Creates a new user with the provided username, password, and optional email.
-    (提供使用者名稱、密碼和可選電子郵件，建立一個新使用者。)
+    (提供使用者名稱、密碼和可選電子郵件，建立一個新使用者。)  
     Parameters:
     - username: Desired username for the new user (新使用者的使用者名稱)
     """

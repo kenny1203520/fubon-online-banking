@@ -41,7 +41,7 @@ async def purchase_investment(
     session: Session = Depends(get_session)
 ):
     """
-    Purchase an investment product (購買投資產品)
+    Purchase an investment product (購買投資產品)  
     Parameters:
     - account_id: ID of the account making the purchase (購買投資的帳戶ID)
     - product_id: ID of the investment product (投資產品ID)

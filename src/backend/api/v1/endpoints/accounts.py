@@ -19,8 +19,11 @@ router = APIRouter()
 async def open_account(request: AccountCreate, session: Session = Depends(get_session)):
     """
     Open a new account (申請新帳戶)  
-    The account will be created with 'pending' status and requires approval.
-    (建立的帳戶將處於「待審核」狀態，需經過審核。)
+    The account will be created with 'pending' status and requires approval.  
+    (建立的帳戶將處於「待審核」狀態，需經過審核。)  
+    Parameters:
+    - full_name: Full name of the account holder (帳戶持有人全名)
+    - id_number: Identification number (身分證號)
     """
     account = Account(
         full_name=request.full_name,
@@ -47,7 +50,7 @@ async def list_accounts(
     session: Session = Depends(get_session)
 ):
     """
-    List all accounts with pagination. (分頁列出所有帳戶)
+    List all accounts with pagination. (分頁列出所有帳戶)  
     Parameters:
     - page: Page number (頁碼)
     - per_page: Number of accounts per page (每頁帳戶數)
@@ -75,7 +78,7 @@ async def list_accounts(
 @router.post('/balance', response_model=BalanceResponse)
 async def get_balance(request: BalanceRequest, session: Session = Depends(get_session)):
     """
-    Get account balance (查詢帳戶餘額).
+    Get account balance (查詢帳戶餘額).  
     Parameters:
     - account_id: ID of the account (帳戶ID)
     """
@@ -101,7 +104,7 @@ async def get_transactions(
     session: Session = Depends(get_session)
 ):
     """
-    Get account transactions with optional date range (查詢帳戶交易紀錄，可選擇日期範圍)
+    Get account transactions with optional date range (查詢帳戶交易紀錄，可選擇日期範圍)  
     Parameters:
     - account_id: ID of the account (帳戶ID)
     - frm: Start date (inclusive) in ISO format (起始日期，包含)

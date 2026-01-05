@@ -81,7 +81,7 @@ async def list_creditcards(
 @router.post('/pay', response_model=CreditCardPaymentResponse)
 async def creditcard_pay(request: CreditCardPaymentRequest, session: Session = Depends(get_session)):
     """
-    Make a credit card payment (信用卡付款)
+    Make a credit card payment (信用卡付款)  
     Parameters:
     - card_id: ID of the credit card to pay (要付款的信用卡ID)
     - amount: Payment amount (付款金額)
@@ -120,7 +120,7 @@ async def creditcard_cash_advance(
     session: Session = Depends(get_session)
 ):
     """
-    Process cash advance on credit card (信用卡現金預借)
+    Process cash advance on credit card (信用卡現金預借)  
     Parameters:
     - card_id: ID of the credit card (信用卡ID)
     - amount: Amount to advance (預借金額)
