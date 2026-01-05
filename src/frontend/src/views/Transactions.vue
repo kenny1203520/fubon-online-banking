@@ -17,10 +17,10 @@ const handle = async (which: keyof Results, path: string, data: any) => {
   return res
 }
 
-const queryBalance = async () => handle('balance', base + '/api/accounts/balance', balanceForm.value)
-const queryTxHistory = async () => handle('txHistory', base + '/api/accounts/transactions', txHistoryForm.value)
-const doTransfer = async () => handle('transfer', base + '/api/accounts/transfer', transferForm.value)
-const updateCashless = async () => handle('cashless', base + '/api/accounts/cashless_withdraw', cashlessForm.value)
+const queryBalance = async () => handle('balance', base + '/accounts/balance', balanceForm.value)
+const queryTxHistory = async () => handle('txHistory', base + '/accounts/transactions', txHistoryForm.value)
+const doTransfer = async () => handle('transfer', base + '/accounts/transfer', transferForm.value)
+const updateCashless = async () => handle('cashless', base + '/accounts/cashless_withdraw', cashlessForm.value)
 </script>
 
 <template>

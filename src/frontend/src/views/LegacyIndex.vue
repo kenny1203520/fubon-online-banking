@@ -64,29 +64,29 @@ const handle = async (which: keyof Results, path: string, data: any) => {
   return res
 }
 
-const openAccount = async () => handle('openAccount', base + '/api/accounts/open', openAccountForm.value)
-const applyCard = async () => handle('cc', base + '/api/creditcards/apply', ccForm.value)
-const registerUser = async () => handle('register', base + '/api/users/register', registerForm.value)
+const openAccount = async () => handle('openAccount', base + '/accounts/open', openAccountForm.value)
+const applyCard = async () => handle('cc', base + '/creditcards/apply', ccForm.value)
+const registerUser = async () => handle('register', base + '/users/register', registerForm.value)
 const loginUser = async () => {
-  const res = await handle('login', base + '/api/users/login', loginForm.value)
+  const res = await handle('login', base + '/users/login', loginForm.value)
   if (res && (res as any).status === 200 && (res as any).body?.token) {
     setToken((res as any).body.token)
   }
 }
 const logoutUser = async () => {
-  const res = await api(base + '/api/users/logout', {})
+  const res = await api(base + '/users/logout', {})
   setToken(null)
   results.login.value = JSON.stringify(res, null, 2)
 }
 
-const queryBalance = async () => handle('balance', base + '/api/accounts/balance', balanceForm.value)
-const queryTxHistory = async () => handle('txHistory', base + '/api/accounts/transactions', txHistoryForm.value)
-const doTransfer = async () => handle('transfer', base + '/api/accounts/transfer', transferForm.value)
-const updateCashless = async () => handle('cashless', base + '/api/accounts/cashless_withdraw', cashlessForm.value)
-const queryInv = async () => handle('invQuery', base + '/api/investments/query', invQueryForm.value)
-const purchaseInv = async () => handle('invPurchase', base + '/api/investments/purchase', invPurchaseForm.value)
-const payCard = async () => handle('cardPay', base + '/api/creditcards/pay', cardPayForm.value)
-const cashCard = async () => handle('cardCash', base + '/api/creditcards/cash_advance', cardCashForm.value)
+const queryBalance = async () => handle('balance', base + '/accounts/balance', balanceForm.value)
+const queryTxHistory = async () => handle('txHistory', base + '/accounts/transactions', txHistoryForm.value)
+const doTransfer = async () => handle('transfer', base + '/accounts/transfer', transferForm.value)
+const updateCashless = async () => handle('cashless', base + '/accounts/cashless_withdraw', cashlessForm.value)
+const queryInv = async () => handle('invQuery', base + '/investments/query', invQueryForm.value)
+const purchaseInv = async () => handle('invPurchase', base + '/investments/purchase', invPurchaseForm.value)
+const payCard = async () => handle('cardPay', base + '/creditcards/pay', cardPayForm.value)
+const cashCard = async () => handle('cardCash', base + '/creditcards/cash_advance', cardCashForm.value)
 const calcLoan = async () => {
   const years = Number(loanCalcForm.value.years) || 0
   const r = Number(loanCalcForm.value.rate) / 100 || 0
@@ -99,7 +99,7 @@ const calcLoan = async () => {
   }
   results.loanCalc.value = JSON.stringify({ monthly: Math.round(monthly * 100) / 100, inputs: loanCalcForm.value }, null, 2)
 }
-const applyLoan = async () => handle('loanApply', base + '/api/loans/apply', loanApplyForm.value)
+const applyLoan = async () => handle('loanApply', base + '/loans/apply', loanApplyForm.value)
 
 </script>
 

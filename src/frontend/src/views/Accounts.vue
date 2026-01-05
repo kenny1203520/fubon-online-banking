@@ -20,17 +20,17 @@ const handle = async (which: keyof Results, path: string, data: any) => {
   return res
 }
 
-const openAccount = async () => handle('openAccount', base + '/api/accounts/open', openAccountForm.value)
-const applyCard = async () => handle('cc', base + '/api/creditcards/apply', ccForm.value)
-const registerUser = async () => handle('register', base + '/api/users/register', registerForm.value)
+const openAccount = async () => handle('openAccount', base + '/accounts/open', openAccountForm.value)
+const applyCard = async () => handle('cc', base + '/creditcards/apply', ccForm.value)
+const registerUser = async () => handle('register', base + '/users/register', registerForm.value)
 const loginUser = async () => {
-  const res = await handle('login', base + '/api/users/login', loginForm.value)
+  const res = await handle('login', base + '/users/login', loginForm.value)
   if (res && (res as any).status === 200 && (res as any).body?.token) {
     setToken((res as any).body.token)
   }
 }
 const logoutUser = async () => {
-  const res = await api(base + '/api/users/logout', {})
+  const res = await api(base + '/users/logout', {})
   setToken(null)
   results.login.value = JSON.stringify(res, null, 2)
 }

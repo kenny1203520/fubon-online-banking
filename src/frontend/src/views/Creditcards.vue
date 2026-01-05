@@ -15,8 +15,8 @@ const handle = async (which: keyof Results, path: string, data: any) => {
   return res
 }
 
-const payCard = async () => handle('cardPay', base + '/api/creditcards/pay', cardPayForm.value)
-const cashCard = async () => handle('cardCash', base + '/api/creditcards/cash_advance', cardCashForm.value)
+const payCard = async () => handle('cardPay', base + '/creditcards/pay', cardPayForm.value)
+const cashCard = async () => handle('cardCash', base + '/creditcards/cash_advance', cardCashForm.value)
 </script>
 
 <template>

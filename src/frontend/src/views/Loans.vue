@@ -27,7 +27,7 @@ const calcLoan = async () => {
   }
   results.loanCalc.value = JSON.stringify({ monthly: Math.round(monthly * 100) / 100, inputs: loanCalcForm.value }, null, 2)
 }
-const applyLoan = async () => handle('loanApply', base + '/api/loans/apply', loanApplyForm.value)
+const applyLoan = async () => handle('loanApply', base + '/loans/apply', loanApplyForm.value)
 </script>
 
 <template>

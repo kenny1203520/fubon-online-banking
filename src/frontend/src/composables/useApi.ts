@@ -4,7 +4,7 @@ const token = ref<string | null>(localStorage.getItem('token'))
 const setToken = (t: string | null) => { token.value = t; if (t) localStorage.setItem('token', t); else localStorage.removeItem('token') }
 const getToken = () => token.value
 
-const base = (import.meta.env.VITE_API_BASE as string) || 'http://localhost:5000'
+const base = (import.meta.env.VITE_API_BASE as string) || 'http://localhost:5000/api/v1'
 
 /**
  * Simple API helper that supports GET and POST.

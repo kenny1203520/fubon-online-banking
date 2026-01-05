@@ -15,8 +15,8 @@ const handle = async (which: keyof Results, path: string, data: any) => {
   return res
 }
 
-const queryInv = async () => handle('invQuery', base + '/api/investments/query', invQueryForm.value)
-const purchaseInv = async () => handle('invPurchase', base + '/api/investments/purchase', invPurchaseForm.value)
+const queryInv = async () => handle('invQuery', base + '/investments/query', invQueryForm.value)
+const purchaseInv = async () => handle('invPurchase', base + '/investments/purchase', invPurchaseForm.value)
 </script>
 
 <template>
