@@ -180,6 +180,7 @@ npm install  # 前端依賴
 
 3. **配置環境變數**
 ```bash
+cd src/frontend
 cp .env.example .env
 # 編輯 .env 檔案，設定資料庫連線、API金鑰等
 ```
