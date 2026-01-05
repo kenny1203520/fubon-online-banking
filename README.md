@@ -17,6 +17,27 @@
 
 ---
 
+## 🏗️ 技術架構
+
+### 前端 (Frontend)
+- **框架**: Vue.js 3 + TypeScript
+- **構建工具**: Vite
+- **狀態管理**: Pinia
+- **路由**: Vue Router
+- **HTTP 客户端**: Axios
+
+### 後端 (Backend)
+- **框架**: FastAPI
+- **資料庫**: PostgreSQL (SQLAlchemy + SQLModel)
+- **認證**: JWT + PyJWT
+- **API 文檔**: Swagger/OpenAPI
+
+### 部署
+- Docker & Docker Compose
+- 分離式微服務架構（前後端獨立部署）
+
+---
+
 ## ✨ 系統功能
 
 ### 1️⃣ 帳戶管理
