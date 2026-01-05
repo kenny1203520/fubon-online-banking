@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 # from core.config import settings
 from contextlib import asynccontextmanager
 from api.v1.router import api_router
@@ -37,14 +38,25 @@ app.add_middleware(
 # 註冊路由
 app.include_router(api_router, prefix="/api/v1")
 
-@app.get("/")
+@app.get("/", status_code=status.HTTP_302_FOUND)
 async def root():
-    return {"message": "富邦網路銀行資訊系統 API"}
+    return RedirectResponse(url="/docs")
 
-@app.get("/health")
+@app.get("/health", status_code=status.HTTP_200_OK)
 async def health():
     return {"status": "healthy"}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, port=5000)
+    import sys
+    
+    # Fix for Windows asyncio event loop issue
+    if sys.platform == "win32":
+        import asyncio
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    
+    uvicorn.run(
+        app,
+        port=5000,
+        loop="asyncio"  # Use asyncio loop instead of default on Windows
+    )
