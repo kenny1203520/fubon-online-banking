@@ -107,11 +107,13 @@ export const useTransactionStore = defineStore('transaction', () => {
       const response = await transactionService.transfer(data)
       
       // 刷新交易列表
-      await fetchTransactions({
-        account_id: data.from_account_id,
-        page: pagination.value.page,
-        per_page: pagination.value.per_page
-      })
+      if (data.from_account_id) {
+        await fetchTransactions({
+          account_id: data.from_account_id,
+          page: pagination.value.page,
+          per_page: pagination.value.per_page
+        })
+      }
       
       return response
     } catch (err) {
@@ -122,6 +124,11 @@ export const useTransactionStore = defineStore('transaction', () => {
       isLoading.value = false
     }
   }
+
+  /**
+   * 建立轉帳 (別名)
+   */
+  const createTransfer = transfer
 
   /**
    * 換匯
@@ -223,6 +230,7 @@ export const useTransactionStore = defineStore('transaction', () => {
     fetchTransactions,
     fetchTransactionById,
     transfer,
+    createTransfer,
     exchange,
     fetchExchangeRates,
     fetchAccountTransactions,

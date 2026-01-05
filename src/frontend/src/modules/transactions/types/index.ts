@@ -41,10 +41,11 @@ export interface TransactionQuery {
 // Transfer Types
 
 export interface TransferRequest {
-  from_account_id: number
-  to_account_id: number
+  from_account_id?: number
+  to_account_number: string
   amount: number
   description?: string
+  transfer_type: 'internal' | 'other' | 'scheduled'
 }
 
 export interface TransferResponse {
