@@ -10,7 +10,12 @@ router = APIRouter()
 
 @router.post('/apply', status_code=status.HTTP_201_CREATED, response_model=LoanApplyResponse)
 async def apply_loan(request: LoanApplyRequest, session: Session = Depends(get_session)):
-    """Apply for a loan."""
+    """
+    Apply for a loan (申請貸款)  
+    Parameters:
+    - user_id: ID of the user applying for the loan (申請貸款的使用者ID)
+    - amount: Amount of the loan (貸款金額)
+    """
     now = datetime.now(timezone.utc).isoformat()
     
     loan = Loan(

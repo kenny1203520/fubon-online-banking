@@ -18,7 +18,11 @@ async def query_investments(
     account_id: Optional[int] = None,
     session: Session = Depends(get_session)
 ):
-    """Query investments for an account or all investments."""
+    """
+    Query investments for an account or all investments (查詢帳戶或所有投資產品)  
+    Parameters:
+    - account_id: Optional account ID to filter investments (可選的帳戶ID，用於篩選投資)
+    """
     if account_id:
         query = select(Investment).where(Investment.account_id == account_id)
     else:
@@ -36,7 +40,13 @@ async def purchase_investment(
     request: InvestmentPurchaseRequest,
     session: Session = Depends(get_session)
 ):
-    """Purchase an investment product."""
+    """
+    Purchase an investment product (購買投資產品)
+    Parameters:
+    - account_id: ID of the account making the purchase (購買投資的帳戶ID)
+    - product_id: ID of the investment product (投資產品ID)
+    - amount: Amount to invest (投資金額)
+    """
     account = session.get(Account, request.account_id)
     
     if not account:

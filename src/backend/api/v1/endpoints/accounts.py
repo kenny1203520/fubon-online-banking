@@ -17,7 +17,11 @@ router = APIRouter()
 
 @router.post('/open', status_code=status.HTTP_201_CREATED)
 async def open_account(request: AccountCreate, session: Session = Depends(get_session)):
-    """Open a new account."""
+    """
+    Open a new account (申請新帳戶)  
+    The account will be created with 'pending' status and requires approval.
+    (建立的帳戶將處於「待審核」狀態，需經過審核。)
+    """
     account = Account(
         full_name=request.full_name,
         id_number=request.id_number,
@@ -25,16 +29,16 @@ async def open_account(request: AccountCreate, session: Session = Depends(get_se
         balance=request.initial_deposit,
         status='pending',
         created_at=datetime.now(timezone.utc).isoformat()
-    )
-    session.add(account)
-    session.commit()
-    session.refresh(account)
+    ) # 創建帳戶並設置初始狀態為「待審核」
+    session.add(account) # 將帳戶加入資料庫會話
+    session.commit() # 提交變更以保存帳戶
+    session.refresh(account) # 重新整理以獲取自動生成的ID等資訊
     
     return {
         'account_id': account.id,
         'status': 'pending',
         'message': '申請已建立，等待審核'
-    }
+    } # 返回帳戶ID和狀態訊息
 
 @router.get('', response_model=AccountList)
 async def list_accounts(
@@ -42,16 +46,22 @@ async def list_accounts(
     per_page: int = Query(10, ge=1),
     session: Session = Depends(get_session)
 ):
-    """List all accounts with pagination."""
-    offset = (page - 1) * per_page
+    """
+    List all accounts with pagination. (分頁列出所有帳戶)
+    Parameters:
+    - page: Page number (頁碼)
+    - per_page: Number of accounts per page (每頁帳戶數)
+    """
+    offset = (page - 1) * per_page # 計算偏移量
     
-    # Get total count
+    # Get total count of accounts
     total = session.exec(func.select(func.count(Account.id))).one()
     
-    # Get accounts
+    # Get accounts for the requested page
     statement = select(Account).order_by(Account.id.desc()).offset(offset).limit(per_page)
     accounts = session.exec(statement).all()
-    
+
+    # 計算總頁數
     total_pages = (total + per_page - 1) // per_page if per_page else 0
     
     return {
@@ -60,24 +70,28 @@ async def list_accounts(
         'per_page': per_page,
         'total': total,
         'total_pages': total_pages
-    }
+    } # 返回帳戶列表和分頁資訊
 
 @router.post('/balance', response_model=BalanceResponse)
 async def get_balance(request: BalanceRequest, session: Session = Depends(get_session)):
-    """Get account balance."""
+    """
+    Get account balance (查詢帳戶餘額).
+    Parameters:
+    - account_id: ID of the account (帳戶ID)
+    """
     account = session.get(Account, request.account_id)
     
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail='account not found'
-        )
+        ) # 帳戶不存在，返回404錯誤
     
     return {
         'account_id': account.id,
         'balance': account.balance,
         'cashless_enabled': bool(account.cashless_enabled)
-    }
+    } # 返回帳戶餘額和無現金提款狀態
 
 @router.post('/transactions', response_model=TransactionList)
 async def get_transactions(
@@ -86,7 +100,12 @@ async def get_transactions(
     to: Optional[str] = None,
     session: Session = Depends(get_session)
 ):
-    """Get account transactions with optional date range."""
+    """
+    Get account transactions with optional date range (查詢帳戶交易紀錄，可選擇日期範圍)
+    Parameters:
+    - account_id: ID of the account (帳戶ID)
+    - frm: Start date (inclusive) in ISO format (起始日期，包含)
+    """
     query = select(Transaction).where(Transaction.account_id == account_id)
     
     if frm:
@@ -103,7 +122,12 @@ async def get_transactions(
 
 @router.post('/transfer', response_model=TransferResponse)
 async def transfer(request: TransferRequest, session: Session = Depends(get_session)):
-    """Transfer money between accounts."""
+    """
+    Transfer money between accounts (帳戶間轉帳)  
+    Parameters:
+    - from_account: Source account ID (來源帳戶ID)
+    - to_account: Destination account ID (目標帳戶ID)
+    """
     if request.amount <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -163,13 +187,17 @@ async def transfer(request: TransferRequest, session: Session = Depends(get_sess
         'to_new_balance': dst_account.balance
     }
 
-
 @router.post('/cashless_withdraw', response_model=CashlessResponse)
 async def cashless_withdraw(
     request: CashlessRequest,
     session: Session = Depends(get_session)
 ):
-    """Enable/disable cashless withdrawal."""
+    """
+    Enable/disable cashless withdrawal (啟用/停用無現金提款功能)  
+    Parameters:
+    - account_id: ID of the account (帳戶ID)
+    - enabled: True to enable, False to disable (啟用為True，停用為False)
+    """
     account = session.get(Account, request.account_id)
     
     if not account:
