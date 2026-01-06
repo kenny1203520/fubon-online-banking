@@ -20,13 +20,16 @@ async def login(request: UserLoginRequest, response: Response, session: Session 
     User login endpoint with dual token mechanism.
     (使用者登入端點 - 採用雙 Token 機制)
     
-    Returns:
-    - access_token: 短期有效（10分鐘）的訪問token (Short-lived access token)
-    - Refresh token: 在 HttpOnly Cookie 中返回 7 天有效期的刷新token (HttpOnly cookie with 7-day refresh token)
-    
     Parameters:
-    - username: The username of the user (使用者名稱)
-    - password: The password of the user (使用者密碼)
+    - request: UserLoginRequest (使用者登入請求)
+    - response: FastAPI Response object to set cookies (用於設置 Cookie 的 FastAPI 回應物件)
+    - session: Database session (資料庫會話)
+    
+    Returns:
+    - token_id: 用於追蹤的 token ID (Token ID for tracking)
+    - token: 短期有效（10分鐘）的訪問token (Short-lived access token)
+    - expires_in: 訪問token的有效時間（秒） (Access token expiry time in seconds)
+    - message: 登入成功訊息 (Login success message)
     """
     if not request.username or not request.password:
         raise HTTPException(
@@ -54,7 +57,7 @@ async def login(request: UserLoginRequest, response: Response, session: Session 
     # 生成雙 Token
     tokens = create_user_tokens(user.id, session)
     
-    # 設置刷新令牌為 HttpOnly Cookie
+    # 設置刷新token為 HttpOnly Cookie
     response.set_cookie(
         key="refresh_token",
         value=tokens["refresh_token"],
@@ -65,11 +68,10 @@ async def login(request: UserLoginRequest, response: Response, session: Session 
     )
     
     return {
-        'token': tokens["access_token"], # 返回訪問token
         'token_id': tokens["token_id"], # 返回 token ID 用於追蹤
+        'token': tokens["access_token"], # 返回訪問token
         'expires_in': tokens["access_token_expires_in"], # 10 分鐘
         'message': '登入成功',
-        'code': 200
     } # 返回登入成功訊息
 
 @router.post('/logout', name="使用者登出", status_code=status.HTTP_200_OK, response_model=UserLogoutResponse)
@@ -77,11 +79,13 @@ async def logout(request: UserLogoutRequest, response: Response, session: Sessio
     """
     User logout endpoint. (使用者登出端點)
     
-    撤銷當前的訪問token和刷新token。
-    (Revokes the current access token and refresh token)
+    Revokes the current access token and refresh token
+    (撤銷當前的訪問token和刷新token)
     
     Parameters:
-    - token_id: 要撤銷的 token ID (token ID to revoke)
+    - request: UserLogoutRequest (使用者登出請求)
+    - response: FastAPI Response object to clear cookies (用於清除 Cookie 的 FastAPI 回應物件)
+    - session: Database session (資料庫會話)
     """
     # 撤銷token
     success = revoke_token(request.token_id, session)
@@ -102,7 +106,6 @@ async def logout(request: UserLogoutRequest, response: Response, session: Sessio
     
     return {
         'message': '登出成功',
-        'code': 200
     } # 返回登出成功訊息
 
 @router.post('/register', name="使用者註冊", status_code=status.HTTP_201_CREATED, response_model=UserRegisterResponse)
@@ -114,9 +117,13 @@ async def register(request: UserRegisterRequest, session: Session = Depends(get_
     (Creates a new user with bcrypt-encrypted password)
     
     Parameters:
-    - username: Desired username for the new user (新使用者的使用者名稱)
-    - password: Password for the new user (密碼)
-    - email: Optional email address (選用的電子郵件)
+    - request: UserRegisterRequest (使用者註冊請求)
+    - session: Database session (資料庫會話)
+
+    Returns:
+    - user_id: 新註冊使用者的 ID (ID of the newly registered user)
+    - username: 註冊的使用者名稱 (Registered username)
+    - message: 註冊成功訊息 (Registration success message)
     """
     # 驗證必填欄位
     if not request.username or not request.password:
@@ -148,7 +155,6 @@ async def register(request: UserRegisterRequest, session: Session = Depends(get_
         'user_id': user.id,
         'username': request.username,
         'message': '註冊成功',
-        'code': 201
     } # 返回註冊成功訊息
 
 @router.post('/refresh', name="刷新訪問token", status_code=status.HTTP_200_OK)
@@ -160,7 +166,13 @@ async def refresh(request: Request, session: Session = Depends(get_session)):
     (Use refresh token from HttpOnly cookie to get new access token)
     
     Parameters:
-    - Cookie 中的 refresh_token (refresh token in HttpOnly cookie)
+    - request: Request object to access cookies (用於訪問 Cookie 的請求物件)
+    - session: Database session (資料庫會話)
+
+    Returns:
+    - token: 新的短期有效（10分鐘）訪問token (New short-lived access token)
+    - expires_in: 訪問token的有效時間（秒） (Access token expiry time in seconds)
+    - message: 刷新成功訊息 (Refresh success message)
     """
     # 從 cookie 中獲取刷新token
     refresh_token = request.cookies.get("refresh_token")
@@ -190,8 +202,7 @@ async def refresh(request: Request, session: Session = Depends(get_session)):
         )
     
     return {
-        'access_token': new_tokens['access_token'],
+        'token': new_tokens['access_token'],
         'expires_in': new_tokens['access_token_expires_in'], # 秒數
         'message': 'token刷新成功',
-        'code': 200
     } # 返回新的訪問token訊息
