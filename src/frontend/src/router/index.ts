@@ -80,7 +80,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: '帳戶詳情',
-      description: '帳戶詳細信息',
+      description: '帳戶詳細資訊',
     },
   },
   {
@@ -152,7 +152,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: '信用卡詳情',
-      description: '信用卡詳細信息',
+      description: '信用卡詳細資訊',
     },
   },
   {

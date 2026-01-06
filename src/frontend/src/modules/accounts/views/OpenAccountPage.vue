@@ -146,14 +146,14 @@ const formatDepositInput = () => {
 
     <div class="page-content">
       <div class="form-container">
-        <!-- 成功訊息 -->
+        <!-- 成功資訊 -->
         <Alert
           v-if="success"
           :message="success"
           type="success"
         />
 
-        <!-- 錯誤訊息 -->
+        <!-- 錯誤資訊 -->
         <Alert
           v-if="error"
           :message="error"

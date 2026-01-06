@@ -269,10 +269,10 @@ API 響應
 API 閘道 & Django 應用
   ├─ 驗證與初步檢查
   ├─ 建立交易紀錄 (status=pending)
-  └─ 將訊息推送至消息隊列
+  └─ 將資訊推送至資訊隊列
   │
 ▼ (非同步處理)
-消息隊列 (RabbitMQ)
+資訊隊列 (RabbitMQ)
   │
 ▼
 後台工作進程 (Celery)
@@ -548,7 +548,7 @@ spec:
 | **API 閘道** | Kong / AWS API Gateway | 路由、認證、限流 |
 | **業務邏輯** | Django + DRF | RESTful API 服務 |
 | **應用伺服器** | Gunicorn + Nginx | WSGI 應用容器 |
-| **訊息隊列** | RabbitMQ | 非同步任務 |
+| **資訊隊列** | RabbitMQ | 非同步任務 |
 | **快取** | Redis | Session、熱資料快取 |
 | **關係資料庫** | PostgreSQL | 主要資料存儲 |
 | **搜尋引擎** | Elasticsearch | 日誌搜尋 |

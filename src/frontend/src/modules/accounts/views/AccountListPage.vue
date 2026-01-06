@@ -111,7 +111,7 @@ onMounted(() => {
     </div>
 
     <div class="page-content">
-      <!-- 錯誤訊息 -->
+      <!-- 錯誤資訊 -->
       <Alert
         v-if="error"
         :message="error"

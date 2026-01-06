@@ -260,7 +260,7 @@ export const useInvestmentStore = defineStore('investment', () => {
   }
 
   /**
-   * 清空錯誤訊息
+   * 清空錯誤資訊
    */
   const clearError = () => {
     error.value = null

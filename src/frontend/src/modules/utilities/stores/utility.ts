@@ -130,7 +130,7 @@ export const useUtilityStore = defineStore('utility', () => {
   }
 
   /**
-   * 清除錯誤信息
+   * 清除錯誤資訊
    */
   const clearError = () => {
     error.value = null

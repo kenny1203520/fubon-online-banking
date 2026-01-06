@@ -65,7 +65,7 @@ const handleResend = () => {
 
       <!-- 未提交狀態 -->
       <form v-if="!isSubmitted" class="auth-form" @submit.prevent="handleResetPassword">
-        <!-- 錯誤訊息 -->
+        <!-- 錯誤資訊 -->
         <Alert
           v-if="error"
           :message="error"

@@ -17,7 +17,7 @@ export interface MenuRoute {
 }
 
 /**
- * 路由元訊息接口
+ * 路由元資料接口
  */
 export interface RouteMeta {
   requiresAuth?: boolean

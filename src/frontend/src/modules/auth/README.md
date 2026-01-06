@@ -117,7 +117,7 @@ const response = await authService.login('username', 'password')
 
 ## 錯誤處理
 
-所有的 API 呼叫都包含錯誤處理，並會拋出包含錯誤訊息的 Error 物件。建議在元件中使用 try-catch 來處理這些錯誤。
+所有的 API 呼叫都包含錯誤處理，並會拋出包含錯誤資訊的 Error 物件。建議在元件中使用 try-catch 來處理這些錯誤。
 
 ```typescript
 try {

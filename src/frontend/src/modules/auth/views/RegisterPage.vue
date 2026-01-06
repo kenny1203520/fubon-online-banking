@@ -88,14 +88,14 @@ const handleBackToLogin = () => {
       </div>
 
       <form class="auth-form" @submit.prevent="handleRegister">
-        <!-- 成功訊息 -->
+        <!-- 成功資訊 -->
         <Alert
           v-if="success"
           :message="success"
           type="success"
         />
 
-        <!-- 錯誤訊息 -->
+        <!-- 錯誤資訊 -->
         <Alert
           v-if="error"
           :message="error"

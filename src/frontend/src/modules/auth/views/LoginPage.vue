@@ -52,7 +52,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
       </div>
 
       <form class="auth-form" @submit.prevent="handleLogin">
-        <!-- 錯誤訊息 -->
+        <!-- 錯誤資訊 -->
         <Alert
           v-if="error"
           :message="error"

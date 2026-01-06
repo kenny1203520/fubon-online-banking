@@ -26,7 +26,7 @@
 前端：React.js + TypeScript + Redux
 後端：Django + Django REST Framework + PostgreSQL
 認證：OAuth 2.0 + FIDO2
-訊息隊列：RabbitMQ
+資訊隊列：RabbitMQ
 快取：Redis
 容器化：Docker + Kubernetes
 ```
@@ -49,7 +49,7 @@ API閘道 (Kong/AWS API Gateway)
 ### 3.1 帳戶管理模組
 **功能**：
 - 客戶註冊與開戶
-- 帳戶訊息管理
+- 帳戶資訊管理
 - 身份驗證與授權
 - KYC (Know Your Customer) 驗證
 
@@ -118,7 +118,7 @@ class FraudDetection
 - **User** - 系統使用者
 - **Account** - 銀行帳戶
 - **Transaction** - 交易記錄
-- **Customer** - 客戶訊息
+- **Customer** - 客戶資訊
 - **Card** - 信用卡/簽帳卡
 - **Loan** - 貸款記錄
 - **Investment** - 投資商品
