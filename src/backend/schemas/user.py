@@ -32,3 +32,8 @@ class UserRefreshResponse(BaseModel):
     token: str
     expires_in: int
     message: str
+
+class UserMeResponse(BaseModel):
+    user_id: int
+    username: str
+    email: Optional[str] = None
