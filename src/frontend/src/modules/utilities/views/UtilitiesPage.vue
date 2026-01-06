@@ -26,7 +26,7 @@ onMounted(async () => {
       {{ utilityStore.error }}
     </div>
 
-    <!-- 統計信息 -->
+    <!-- 統計資訊 -->
     <div v-if="utilityStore.billStats" class="stats-grid">
       <div class="stat-card">
         <div class="stat-label">待繳帳單</div>
