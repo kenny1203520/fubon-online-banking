@@ -210,10 +210,10 @@ async def refresh(request: Request, session: Session = Depends(get_session)):
         'message': 'token刷新成功',
     } # 返回新的訪問token資訊
 
-@router.get('/verify', name="驗證訪問token", status_code=status.HTTP_200_OK, response_model=bool)
-async def verify(token: str, session: Session = Depends(get_session))-> bool:
+@router.get('/verify', name="驗證訪問是否有效", status_code=status.HTTP_200_OK, response_model=bool)
+async def verify(request: Request, session: Session = Depends(get_session))-> bool:
     """
-    Verify access token validity. (驗證訪問token有效性)
+    Verify access validity. (驗證訪問是否有效性)
     
     Parameters:
     - request: Request object to access Authorization header (用於訪問 Authorization 標頭的請求物件)
@@ -222,10 +222,12 @@ async def verify(token: str, session: Session = Depends(get_session))-> bool:
     Returns:
     - bool: 如果 token 有效則返回 True (returns True if token is valid)
     """
-    if not token: return False
+    refresh_token = request.cookies.get("refresh_token")
+
+    if not refresh_token: return False
     
     # 驗證刷新token
-    token_id = verify_refresh_token(token, session)
+    token_id = verify_refresh_token(refresh_token, session)
     
     if not token_id: return False
 
