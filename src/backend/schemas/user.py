@@ -1,5 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel
+from fastapi import Request
 
 class UserLoginRequest(BaseModel):
     username: str
@@ -25,4 +26,9 @@ class UserLogoutRequest(BaseModel):
     token_id: str
 
 class UserLogoutResponse(BaseModel):
+    message: str
+
+class UserRefreshResponse(BaseModel):
+    token: str
+    expires_in: int
     message: str

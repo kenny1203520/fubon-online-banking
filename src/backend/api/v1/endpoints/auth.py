@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from models.user import User
 from schemas.user import (
     UserLoginRequest, UserLoginResponse, UserRegisterRequest, UserRegisterResponse,
-    UserLogoutRequest, UserLogoutResponse
+    UserLogoutRequest, UserLogoutResponse, UserRefreshResponse
 )
 from core.database import get_session
 from core.auth import (
@@ -27,7 +27,7 @@ async def login(request: UserLoginRequest, response: Response, session: Session 
     
     Returns:
     - token_id: 用於追蹤的 token ID (Token ID for tracking)
-    - token: 短期有效（10分鐘）的訪問token (Short-lived access token)
+    - token: 短期有效的訪問token (Short-lived access token)
     - expires_in: 訪問token的有效時間（秒） (Access token expiry time in seconds)
     - message: 登入成功訊息 (Login success message)
     """
@@ -86,6 +86,9 @@ async def logout(request: UserLogoutRequest, response: Response, session: Sessio
     - request: UserLogoutRequest (使用者登出請求)
     - response: FastAPI Response object to clear cookies (用於清除 Cookie 的 FastAPI 回應物件)
     - session: Database session (資料庫會話)
+
+    Returns:
+    - message: 登出成功訊息 (Logout success message)
     """
     # 撤銷token
     success = revoke_token(request.token_id, session)
@@ -157,7 +160,7 @@ async def register(request: UserRegisterRequest, session: Session = Depends(get_
         'message': '註冊成功',
     } # 返回註冊成功訊息
 
-@router.post('/refresh', name="刷新訪問token", status_code=status.HTTP_200_OK)
+@router.post('/refresh', name="刷新訪問token", status_code=status.HTTP_200_OK, response_model=UserRefreshResponse)
 async def refresh(request: Request, session: Session = Depends(get_session)):
     """
     Token refresh endpoint. (刷新token端點)
@@ -170,7 +173,7 @@ async def refresh(request: Request, session: Session = Depends(get_session)):
     - session: Database session (資料庫會話)
 
     Returns:
-    - token: 新的短期有效（10分鐘）訪問token (New short-lived access token)
+    - token: 新的短期有效訪問token (New short-lived access token)
     - expires_in: 訪問token的有效時間（秒） (Access token expiry time in seconds)
     - message: 刷新成功訊息 (Refresh success message)
     """
