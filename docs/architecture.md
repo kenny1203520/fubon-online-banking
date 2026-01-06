@@ -416,7 +416,7 @@ API 閘道
 審計日誌 (Audit Logs)
   ├─ 使用者操作
   ├─ 權限變更
-  ├─ 數據修改
+  ├─ 資料修改
   └─ 儲存：PostgreSQL (不可竄改)
 
 效能日誌 (Performance Logs)
@@ -549,8 +549,8 @@ spec:
 | **業務邏輯** | Django + DRF | RESTful API 服務 |
 | **應用伺服器** | Gunicorn + Nginx | WSGI 應用容器 |
 | **訊息隊列** | RabbitMQ | 非同步任務 |
-| **快取** | Redis | Session、熱數據快取 |
-| **關係數據庫** | PostgreSQL | 主要數據存儲 |
+| **快取** | Redis | Session、熱資料快取 |
+| **關係資料庫** | PostgreSQL | 主要資料存儲 |
 | **搜尋引擎** | Elasticsearch | 日誌搜尋 |
 | **監控** | Prometheus + Grafana | 指標監控 |
 | **容器化** | Docker + Kubernetes | 應用部署 |

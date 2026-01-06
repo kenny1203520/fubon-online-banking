@@ -50,11 +50,11 @@ onMounted(async () => {
 - `bills` - 繳費帳單列表
 - `paymentHistory` - 繳費記錄列表
 - `isLoading` - 加載狀態
-- `error` - 錯誤信息
+- `error` - 錯誤資訊
 
 ### 計算屬性
 
-- `billStats` - 帳單統計信息（待繳、已繳、逾期數量及總額）
+- `billStats` - 帳單統計資訊（待繳、已繳、逾期數量及總額）
 
 ### 方法
 
@@ -62,7 +62,7 @@ onMounted(async () => {
 - `fetchBills(options?)` - 取得帳單列表
 - `payBill(data)` - 支付帳單
 - `fetchPaymentHistory(options?)` - 取得支付歷史
-- `clearError()` - 清除錯誤信息
+- `clearError()` - 清除錯誤資訊
 - `reset()` - 重置狀態
 
 ## 目錄結構

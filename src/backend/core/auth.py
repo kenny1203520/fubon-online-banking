@@ -13,8 +13,8 @@ SessionDep = Annotated[Session, Depends(get_session)]
 security = HTTPBearer(description="Bearer token from /api/v1/auth/login")
 
 # Token 配置
-ACCESS_TOKEN_EXPIRE_MINUTES = 10  # 訪問令牌有效期：10 分鐘
-REFRESH_TOKEN_EXPIRE_DAYS = 7  # 刷新令牌有效期：7 天
+ACCESS_TOKEN_EXPIRE_MINUTES = 10 # 訪問token有效期：10 分鐘
+REFRESH_TOKEN_EXPIRE_DAYS = 7    # 刷新token有效期：7 天
 
 # ============== 密碼加密和驗證 ==============
 def hash_password(password: str) -> str:
@@ -52,27 +52,27 @@ def create_token(expires_delta: Optional[timedelta] = None) -> str:
     Parameters:
     - expires_delta: Token 過期時間 (token expiration time)
     Returns:
-    - 生成的 token 字符串 (generated token string)
+    - 生成的 token 字串 (generated token string)
     """
     return secrets.token_urlsafe(32)
 
 def create_user_tokens(user_id: int, session: Session) -> Dict[str, Any]:
     """
-    為用戶創建訪問令牌和刷新令牌（雙 Token 機制）
+    為用戶創建訪問token和刷新token（雙 Token 機制）
     (Create access and refresh tokens for user - Dual Token Mechanism)
     
     Parameters:
     - user_id: 用戶 ID (user ID)
-    - session: 數據庫會話 (database session)
+    - session: 資料庫 session (database session)
     
     Returns:
     - 包含 tokens 和過期時間的字典：
     {
         "token_id": "唯一 token ID",
-        "access_token": "訪問令牌",
-        "refresh_token": "刷新令牌",
-        "access_token_expires_in": 600,  # 秒數
-        "refresh_token_expires_in": 604800  # 秒數
+        "access_token": "訪問token",
+        "refresh_token": "刷新token",
+        "access_token_expires_in": 600, # 訪問token過期時間 (秒)
+        "refresh_token_expires_in": 604800 # 刷新token過期時間 (秒)
     }
     """
     now = datetime.now(timezone.utc) # 當前時間
@@ -86,7 +86,7 @@ def create_user_tokens(user_id: int, session: Session) -> Dict[str, Any]:
     access_expires = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     refresh_expires = now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     
-    # 保存到數據庫
+    # 保存到資料庫
     db_session = SessionModel(
         user_id=user_id,
         token_id=token_id,
@@ -112,15 +112,15 @@ def create_user_tokens(user_id: int, session: Session) -> Dict[str, Any]:
 
 def verify_access_token(token: str, session: Session) -> Tuple[Optional[User], Optional[str]]:
     """
-    驗證訪問令牌並返回用戶和 token_id
+    驗證訪問token並返回用戶和 token_id
     (Verify access token and return user and token_id)
     
     Parameters:
-    - token: 訪問令牌 (access token)
-    - session: 數據庫會話 (database session)
+    - token: 訪問token (access token)
+    - session: 資料庫 session (database session)
     
     Returns:
-    - (user, token_id) 元組，如果令牌無效則返回 (None, None)
+    - (user, token_id) 元組，如果token無效則返回 (None, None)
     """
     if not token:
         return None, None
@@ -150,12 +150,12 @@ def verify_access_token(token: str, session: Session) -> Tuple[Optional[User], O
 
 def verify_refresh_token(token: str, session: Session) -> Optional[str]:
     """
-    驗證刷新令牌並返回 token_id
+    驗證刷新token並返回 token_id
     (Verify refresh token and return token_id for token rotation)
     
     Parameters:
-    - token: 刷新令牌 (refresh token)
-    - session: 數據庫會話 (database session)
+    - token: 刷新token (refresh token)
+    - session: 資料庫 session (database session)
     
     Returns:
     - token_id 如果有效，否則 None
@@ -187,10 +187,10 @@ def rotate_tokens(token_id: str, session: Session) -> Optional[Dict[str, Any]]:
     
     Parameters:
     - token_id: 舊的 token ID (old token ID)
-    - session: 數據庫會話 (database session)
+    - session: 資料庫 session (database session)
     
     Returns:
-    - 新的 token 信息，或 None 如果失敗
+    - 新的 token 資訊，或 None 如果失敗
     """
     # 找到session
     statement = select(SessionModel).where(SessionModel.token_id == token_id)
@@ -216,7 +216,7 @@ def rotate_tokens(token_id: str, session: Session) -> Optional[Dict[str, Any]]:
         "token_id": db_session.token_id,
         "access_token": new_access_token,
         "access_token_expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60
-    } # 返回新的訪問token信息
+    } # 返回新的訪問token資訊
 
 def revoke_token(token_id: str, session: Session) -> bool:
     """
@@ -225,7 +225,7 @@ def revoke_token(token_id: str, session: Session) -> bool:
     
     Parameters:
     - token_id: 要撤銷的 token ID (token ID to revoke)
-    - session: 數據庫會話 (database session)
+    - session: 資料庫 session (database session)
     
     Returns:
     - 撤銷是否成功 (bool)
@@ -249,13 +249,13 @@ def get_current_user(
     session: Session = Depends(get_session)
 ) -> User:
     """
-    從 Authorization header 獲取當前認證用戶（使用訪問令牌）
+    從 Authorization header 獲取當前認證用戶（使用訪問token）
     (Get current authenticated user from Authorization header using access token)
     
     Expects: Authorization: Bearer <access_token>
     
     Raises:
-    - HTTPException 如果令牌無效或過期 (if token is invalid or expired)
+    - HTTPException 如果token無效或過期 (if token is invalid or expired)
     """
     # 提取token
     token = credentials.credentials
