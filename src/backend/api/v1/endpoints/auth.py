@@ -1,24 +1,29 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Response, Request
 from sqlmodel import Session, select
 from datetime import datetime, timezone
-from werkzeug.security import generate_password_hash, check_password_hash
-
 from models.user import User
 from schemas.user import (
     UserLoginRequest, UserLoginResponse, UserRegisterRequest, UserRegisterResponse,
     UserLogoutRequest, UserLogoutResponse
 )
 from core.database import get_session
-from core.auth import create_user_session, get_user_by_token
+from core.auth import (
+    create_user_tokens, verify_refresh_token, rotate_tokens, 
+    revoke_token, hash_password, verify_password
+)
 
 router = APIRouter()
 
 @router.post('/login', name="使用者登入", status_code=status.HTTP_200_OK, response_model=UserLoginResponse)
-async def login(request: UserLoginRequest, session: Session = Depends(get_session)):
+async def login(request: UserLoginRequest, response: Response, session: Session = Depends(get_session)):
     """
-    User login endpoint. (使用者登入端點)  
-    Validates user credentials and returns a session token upon successful authentication.
-    (驗證使用者憑證，並在成功驗證後返回session token。)  
+    User login endpoint with dual token mechanism.
+    (使用者登入端點 - 採用雙 Token 機制)
+    
+    Returns:
+    - access_token: 短期有效（10分鐘）的訪問token (Short-lived access token)
+    - Refresh token: 在 HttpOnly Cookie 中返回 7 天有效期的刷新token (HttpOnly cookie with 7-day refresh token)
+    
     Parameters:
     - username: The username of the user (使用者名稱)
     - password: The password of the user (使用者密碼)
@@ -32,8 +37,8 @@ async def login(request: UserLoginRequest, session: Session = Depends(get_sessio
     statement = select(User).where(User.username == request.username) # 查詢使用者
     user = session.exec(statement).first() # 獲取使用者資料
     
-    # 驗證密碼
-    if not user or not check_password_hash(user.password_hash, request.password):
+    # 驗證密碼 (使用 bcrypt)
+    if not user or not verify_password(request.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='invalid credentials'
@@ -46,38 +51,54 @@ async def login(request: UserLoginRequest, session: Session = Depends(get_sessio
             detail='user ID is None'
         ) # 處理使用者ID為None錯誤
     
-    # 創建使用者session並生成token
-    token = create_user_session(user.id, session)
+    # 生成雙 Token
+    tokens = create_user_tokens(user.id, session)
+    
+    # 設置刷新令牌為 HttpOnly Cookie
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens["refresh_token"],
+        max_age=tokens["refresh_token_expires_in"], # 7 days in seconds
+        httponly=True, # 防止 JavaScript 訪問
+        secure=True, # 僅通過 HTTPS 發送
+        samesite="strict" # 防止 CSRF 攻擊
+    )
+    
     return {
-        'token': token,
+        'token': tokens["access_token"], # 返回訪問token
+        'token_id': tokens["token_id"], # 返回 token ID 用於追蹤
+        'expires_in': tokens["access_token_expires_in"], # 10 分鐘
         'message': '登入成功',
         'code': 200
     } # 返回登入成功訊息
 
 @router.post('/logout', name="使用者登出", status_code=status.HTTP_200_OK, response_model=UserLogoutResponse)
-async def logout(request: UserLogoutRequest, session: Session = Depends(get_session)):
+async def logout(request: UserLogoutRequest, response: Response, session: Session = Depends(get_session)):
     """
-    User logout endpoint. (使用者登出端點)  
-    Invalidates the user session associated with the provided token.
-    (使該令牌對應的使用者會話失效。)  
+    User logout endpoint. (使用者登出端點)
+    
+    撤銷當前的訪問token和刷新token。
+    (Revokes the current access token and refresh token)
+    
     Parameters:
-    - token: The session token to invalidate (要使無效的session token)
+    - token_id: 要撤銷的 token ID (token ID to revoke)
     """
-    from models.user import SessionModel
+    # 撤銷token
+    success = revoke_token(request.token_id, session)
     
-    statement = select(SessionModel).where(SessionModel.token == request.token) # 查詢Session
-    db_session = session.exec(statement).first() # 獲取Session資料
-    
-    # 驗證Session是否存在
-    if not db_session:
+    if not success:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='invalid token'
-        ) # 處理無效token錯誤
+        )
     
-    # 刪除Session並登出使用者
-    session.delete(db_session)
-    session.commit()
+    # 清除刷新token cookie
+    response.delete_cookie(
+        key="refresh_token",
+        httponly=True,
+        secure=True,
+        samesite="strict"
+    )
     
     return {
         'message': '登出成功',
@@ -87,11 +108,15 @@ async def logout(request: UserLogoutRequest, session: Session = Depends(get_sess
 @router.post('/register', name="使用者註冊", status_code=status.HTTP_201_CREATED, response_model=UserRegisterResponse)
 async def register(request: UserRegisterRequest, session: Session = Depends(get_session)):
     """
-    User registration endpoint. (使用者註冊端點)  
-    Creates a new user with the provided username, password, and optional email.
-    (提供使用者名稱、密碼和可選電子郵件，建立一個新使用者。)  
+    User registration endpoint. (使用者註冊端點)
+    
+    使用 bcrypt 加密密碼，建立新用戶。
+    (Creates a new user with bcrypt-encrypted password)
+    
     Parameters:
     - username: Desired username for the new user (新使用者的使用者名稱)
+    - password: Password for the new user (密碼)
+    - email: Optional email address (選用的電子郵件)
     """
     # 驗證必填欄位
     if not request.username or not request.password:
@@ -100,7 +125,8 @@ async def register(request: UserRegisterRequest, session: Session = Depends(get_
             detail='missing required fields'
         ) # 處理缺少必填欄位錯誤
     
-    password_hash = generate_password_hash(request.password) # 產生密碼雜湊
+    # 使用 bcrypt 加密密碼
+    password_hash = hash_password(request.password)
     
     try:
         user = User(
@@ -124,3 +150,48 @@ async def register(request: UserRegisterRequest, session: Session = Depends(get_
         'message': '註冊成功',
         'code': 201
     } # 返回註冊成功訊息
+
+@router.post('/refresh', name="刷新訪問token", status_code=status.HTTP_200_OK)
+async def refresh(request: Request, session: Session = Depends(get_session)):
+    """
+    Token refresh endpoint. (刷新token端點)
+    
+    使用刷新token獲取新的訪問token。
+    (Use refresh token from HttpOnly cookie to get new access token)
+    
+    Parameters:
+    - Cookie 中的 refresh_token (refresh token in HttpOnly cookie)
+    """
+    # 從 cookie 中獲取刷新token
+    refresh_token = request.cookies.get("refresh_token")
+    
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='refresh token missing'
+        )
+    
+    # 驗證刷新token
+    token_id = verify_refresh_token(refresh_token, session)
+    
+    if not token_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='invalid or expired refresh token'
+        )
+    
+    # 旋轉token - 生成新的訪問token
+    new_tokens = rotate_tokens(token_id, session)
+    
+    if not new_tokens:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='token rotation failed'
+        )
+    
+    return {
+        'access_token': new_tokens['access_token'],
+        'expires_in': new_tokens['access_token_expires_in'], # 秒數
+        'message': 'token刷新成功',
+        'code': 200
+    } # 返回新的訪問token訊息

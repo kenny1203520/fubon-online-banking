@@ -7,6 +7,8 @@ class UserLoginRequest(BaseModel):
 
 class UserLoginResponse(BaseModel):
     token: str
+    token_id: str
+    expires_in: int
     message: str
     code: int
 
@@ -22,7 +24,7 @@ class UserRegisterResponse(BaseModel):
     code: int
 
 class UserLogoutRequest(BaseModel):
-    token: str
+    token_id: str
 
 class UserLogoutResponse(BaseModel):
     message: str
