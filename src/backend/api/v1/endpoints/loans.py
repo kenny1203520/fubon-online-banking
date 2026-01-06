@@ -3,13 +3,19 @@ from sqlmodel import Session
 from datetime import datetime, timezone
 
 from models.loan import Loan
+from models.user import User
 from schemas.loan import LoanApplyRequest, LoanApplyResponse
 from core.database import get_session
+from core.auth import get_current_user
 
 router = APIRouter()
 
 @router.post('/apply', status_code=status.HTTP_201_CREATED, response_model=LoanApplyResponse)
-async def apply_loan(request: LoanApplyRequest, session: Session = Depends(get_session)):
+async def apply_loan(
+    request: LoanApplyRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
     """
     Apply for a loan (申請貸款)  
     Parameters:

@@ -5,6 +5,7 @@ from typing import Optional
 
 from models.account import Account
 from models.transaction import Transaction
+from models.user import User
 from schemas.account import (
     AccountCreate, AccountResponse, AccountList, BalanceRequest, BalanceResponse,
     CashlessRequest, CashlessResponse
@@ -12,6 +13,7 @@ from schemas.account import (
 from schemas.transaction import TransactionList, TransactionResponse
 from schemas.credit_card import TransferRequest, TransferResponse
 from core.database import get_session
+from core.auth import get_current_user
 
 router = APIRouter()
 
@@ -47,6 +49,7 @@ async def open_account(request: AccountCreate, session: Session = Depends(get_se
 async def list_accounts(
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1),
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
     """
@@ -76,7 +79,11 @@ async def list_accounts(
     } # 返回帳戶列表和分頁資訊
 
 @router.post('/balance', response_model=BalanceResponse)
-async def get_balance(request: BalanceRequest, session: Session = Depends(get_session)):
+async def get_balance(
+    request: BalanceRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
     """
     Get account balance (查詢帳戶餘額).  
     Parameters:
@@ -101,6 +108,7 @@ async def get_transactions(
     account_id: int,
     frm: Optional[str] = None,
     to: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
     """
@@ -124,7 +132,11 @@ async def get_transactions(
     }
 
 @router.post('/transfer', response_model=TransferResponse)
-async def transfer(request: TransferRequest, session: Session = Depends(get_session)):
+async def transfer(
+    request: TransferRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
     """
     Transfer money between accounts (帳戶間轉帳)  
     Parameters:
@@ -193,6 +205,7 @@ async def transfer(request: TransferRequest, session: Session = Depends(get_sess
 @router.post('/cashless_withdraw', response_model=CashlessResponse)
 async def cashless_withdraw(
     request: CashlessRequest,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
     """

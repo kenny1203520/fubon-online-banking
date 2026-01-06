@@ -1,13 +1,14 @@
 from fastapi import Depends, HTTPException, status, Header
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import Session, select
 from datetime import datetime, timedelta, timezone
 from models.user import User, SessionModel
 from core.database import get_session
 from typing import Optional, Annotated
 import secrets
-from werkzeug.security import generate_password_hash, check_password_hash
 
 SessionDep = Annotated[Session, Depends(get_session)]
+security = HTTPBearer(description="Bearer token from /api/v1/auth/login")
 
 def create_user_session(user_id: int, session: Session, hours_valid: int = 24) -> str:
     """
@@ -89,29 +90,17 @@ def verify_token(token: str, session: SessionDep) -> User:
     return user
 
 def get_current_user(
-    authorization: Optional[str] = Header(None),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     session: Session = Depends(get_session)
 ) -> User:
     """
-    Get current authenticated user from Authorization header. (從Authorization標頭獲取當前認證使用者)
+    Get current authenticated user from HTTPBearer credentials.
+    (從HTTPBearer認證信息獲取當前認證使用者)
+    
     Expects: Authorization: Bearer <token>
     
     Raises:
     - HTTPException if token is missing or invalid
     """
-    if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing authorization header"
-        )
-    
-    # Extract token from "Bearer <token>"
-    parts = authorization.split()
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization header format"
-        )
-    
-    token = parts[1]
+    token = credentials.credentials
     return verify_token(token, session)

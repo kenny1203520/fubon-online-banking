@@ -20,6 +20,7 @@ router = APIRouter()
 async def list_creditcards(
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1),
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
     """
@@ -53,7 +54,11 @@ async def list_creditcards(
     }
 
 @router.post('/apply', name="申請信用卡", status_code=status.HTTP_201_CREATED)
-async def apply_creditcard(request: CreditCardCreate, session: Session = Depends(get_session)):
+async def apply_creditcard(
+    request: CreditCardCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
     """
     Apply for a credit card (申請信用卡)  
     Parameters:
@@ -81,7 +86,11 @@ async def apply_creditcard(request: CreditCardCreate, session: Session = Depends
     }
 
 @router.get("/{card_id}", name="取得信用卡詳情", status_code=status.HTTP_200_OK)
-async def get_creditcard(card_id: int, session: Session = Depends(get_session)):
+async def get_creditcard(
+    card_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
     """
     get creditcard details (取得信用卡詳情)  
     Parameters:
@@ -98,7 +107,12 @@ async def get_creditcard(card_id: int, session: Session = Depends(get_session)):
     return card
 
 @router.post('/{card_id}/pay', name="信用卡付款", response_model=CreditCardPaymentResponse)
-async def creditcard_pay(card_id: int, request: CreditCardPaymentRequest, session: Session = Depends(get_session)):
+async def creditcard_pay(
+    card_id: int,
+    request: CreditCardPaymentRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
     """
     Make a credit card payment (信用卡付款)  
     Parameters:
@@ -135,6 +149,7 @@ async def creditcard_pay(card_id: int, request: CreditCardPaymentRequest, sessio
 @router.post('/cash_advance', name="信用卡現金預借", response_model=CreditCardCashAdvanceResponse)
 async def creditcard_cash_advance(
     request: CreditCardCashAdvanceRequest,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
     """

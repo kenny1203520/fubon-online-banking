@@ -6,16 +6,19 @@ from typing import Optional
 from models.investment import Investment
 from models.account import Account
 from models.transaction import Transaction
+from models.user import User
 from schemas.investment import (
     InvestmentList, InvestmentResponse, InvestmentPurchaseRequest, InvestmentPurchaseResponse
 )
 from core.database import get_session
+from core.auth import get_current_user
 
 router = APIRouter()
 
 @router.post('/query', response_model=InvestmentList)
 async def query_investments(
     account_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
     """
@@ -38,6 +41,7 @@ async def query_investments(
 @router.post('/purchase', response_model=InvestmentPurchaseResponse)
 async def purchase_investment(
     request: InvestmentPurchaseRequest,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
     """
