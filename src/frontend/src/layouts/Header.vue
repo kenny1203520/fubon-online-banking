@@ -10,9 +10,16 @@ const isMenuOpen = ref(false)
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 
 const handleLogout = async () => {
-  await authStore.logout()
-  isMenuOpen.value = false
-  router.push('/')
+  try {
+    await authStore.logout()
+    isMenuOpen.value = false
+    router.push('/')
+  } catch (error) {
+    console.error('登出失敗:', error)
+    // 即使出錯也關閉菜單並跳轉到首頁
+    isMenuOpen.value = false
+    router.push('/')
+  }
 }
 </script>
 

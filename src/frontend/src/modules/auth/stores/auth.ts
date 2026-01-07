@@ -15,7 +15,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoading = ref(false)
 
   // Computed
-  const isAuthenticated = computed(() => !!token.value && !!user.value && verify())
+  const isAuthenticated = computed(() => !!token.value && !!user.value)
 
   // Actions
   const setTokenId = (newTokenId: string) => {
@@ -34,7 +34,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authService.login(username, password)
       setTokenId(response.data.token_id)
       setToken(response.data.token)
-      
+
       // 登入成功後獲取使用者資訊
       await getCurrentUser()
     } catch (error: unknown) {
@@ -66,21 +66,29 @@ export const useAuthStore = defineStore('auth', () => {
 
   const logout = async () => {
     isLoading.value = true
-    try {
-      if (tokenId.value) {
-        await authService.logout(tokenId.value)
+
+    // 先保存 tokenId 以便後續使用
+    const currentTokenId = tokenId.value
+
+    // 立即清除本地數據，避免用戶等待
+    tokenId.value = null
+    token.value = null
+    user.value = null
+    localStorage.removeItem(TOKEN_ID_KEY)
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(USER_KEY)
+
+    // 嘗試通知後端登出（不影響前端狀態）
+    if (currentTokenId) {
+      try {
+        await authService.logout(currentTokenId)
+      } catch (error) {
+        // 忽略後端錯誤，因為本地數據已經清除
+        console.warn('後端登出請求失敗，但本地數據已清除:', error)
       }
-    } catch (error) {
-      console.error('登出時發生錯誤:', error)
-    } finally {
-      tokenId.value = null
-      token.value = null
-      user.value = null
-      localStorage.removeItem(TOKEN_ID_KEY)
-      localStorage.removeItem(TOKEN_KEY)
-      localStorage.removeItem(USER_KEY)
-      isLoading.value = false
     }
+
+    isLoading.value = false
   }
 
   const getCurrentUser = async () => {
@@ -126,7 +134,7 @@ export const useAuthStore = defineStore('auth', () => {
   const initializeAuth = () => {
     const savedToken = localStorage.getItem(TOKEN_KEY)
     const savedUser = localStorage.getItem(USER_KEY)
-    
+
     if (savedToken && savedUser) {
       token.value = savedToken
       try {
