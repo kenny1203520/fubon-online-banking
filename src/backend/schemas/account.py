@@ -2,13 +2,13 @@ from typing import Optional, List
 from pydantic import BaseModel, EmailStr, field_validator
 import re
 
-class AccountCreate(BaseModel):
+class AccountCreateRequest(BaseModel):
     full_name: str
     id_number: str
     email: Optional[EmailStr] = None
     phone: str
     address: str
-    account_type: str = 'savings'  # savings, checking, fixed_deposit
+    account_type: str = 'savings'
     initial_deposit: float
 
     @field_validator('id_number')
@@ -46,6 +46,11 @@ class AccountCreate(BaseModel):
             raise ValueError('初始存款金額不可超過 10,000,000 元')
         return v
 
+class AccountCreateResponse(BaseModel):
+    account_id: int
+    status: str
+    message: str
+
 class AccountResponse(BaseModel):
     id: int
     account_number: str
@@ -71,7 +76,7 @@ class OpenAccountResponse(BaseModel):
     status: str
     message: str
 
-class AccountList(BaseModel):
+class AccountListResponse(BaseModel):
     items: List[AccountResponse]
     page: int
     per_page: int

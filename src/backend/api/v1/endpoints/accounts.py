@@ -9,7 +9,7 @@ from models.account import Account
 from models.transaction import Transaction
 from models.user import User
 from schemas.account import (
-    AccountCreate, AccountResponse, AccountList, BalanceRequest, BalanceResponse,
+    AccountCreateRequest, AccountResponse, AccountListResponse, BalanceRequest, BalanceResponse,
     CashlessRequest, CashlessResponse, OpenAccountResponse
 )
 from schemas.transaction import TransactionList, TransactionResponse
@@ -38,8 +38,41 @@ def generate_account_name(account_type: str) -> str:
     }
     return type_names.get(account_type, '一般帳戶')
 
+@router.get('', name="顯示帳戶列表", status_code=status.HTTP_200_OK, response_model=AccountListResponse)
+async def list_accounts(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1),
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """
+    List all accounts with pagination. (分頁列出所有帳戶)  
+    Parameters:
+    - page: Page number (頁碼)
+    - per_page: Number of accounts per page (每頁帳戶數)
+    """
+    offset = (page - 1) * per_page # 計算偏移量
+    
+    # Get total count of accounts
+    total = session.exec(func.select(func.count(Account.id))).one()
+    
+    # Get accounts for the requested page
+    statement = select(Account).order_by(Account.id.desc()).offset(offset).limit(per_page)
+    accounts = session.exec(statement).all()
+
+    # 計算總頁數
+    total_pages = (total + per_page - 1) // per_page if per_page else 0
+    
+    return {
+        'items': [AccountResponse.from_orm(acc) for acc in accounts],
+        'page': page,
+        'per_page': per_page,
+        'total': total,
+        'total_pages': total_pages
+    } # 返回帳戶列表和分頁資訊
+
 @router.post('/open', status_code=status.HTTP_201_CREATED, response_model=OpenAccountResponse)
-async def open_account(request: AccountCreate, session: Session = Depends(get_session)):
+async def open_account(request: AccountCreateRequest, session: Session = Depends(get_session)):
     """
     Open a new account (申請新帳戶)  
     The account will be created with 'pending' status and requires approval.  
@@ -105,39 +138,6 @@ async def open_account(request: AccountCreate, session: Session = Depends(get_se
         status='pending',
         message='申請已建立，等待審核。預計 1-3 個工作天完成審核。'
     )
-
-@router.get('', response_model=AccountList)
-async def list_accounts(
-    page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1),
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
-):
-    """
-    List all accounts with pagination. (分頁列出所有帳戶)  
-    Parameters:
-    - page: Page number (頁碼)
-    - per_page: Number of accounts per page (每頁帳戶數)
-    """
-    offset = (page - 1) * per_page # 計算偏移量
-    
-    # Get total count of accounts
-    total = session.exec(func.select(func.count(Account.id))).one()
-    
-    # Get accounts for the requested page
-    statement = select(Account).order_by(Account.id.desc()).offset(offset).limit(per_page)
-    accounts = session.exec(statement).all()
-
-    # 計算總頁數
-    total_pages = (total + per_page - 1) // per_page if per_page else 0
-    
-    return {
-        'items': [AccountResponse.from_orm(acc) for acc in accounts],
-        'page': page,
-        'per_page': per_page,
-        'total': total,
-        'total_pages': total_pages
-    } # 返回帳戶列表和分頁資訊
 
 @router.post('/balance', response_model=BalanceResponse)
 async def get_balance(
