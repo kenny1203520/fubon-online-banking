@@ -46,6 +46,16 @@ const routes: RouteRecordRaw[] = [
       description: '密碼重置頁面',
     },
   },
+  {
+    path: '/select-services',
+    name: 'SelectServices',
+    component: () => import('@/modules/auth/views/ServiceSelection.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '選擇服務',
+      description: '登入後的服務功能選擇',
+    },
+  },
 
   // 主應用路由
   {
