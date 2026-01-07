@@ -14,18 +14,18 @@ export const authService = {
   register: (data: RegisterRequest) => 
     apiClient.post<RegisterResponse>('/auth/register', data),
   
-  logout: () => 
-    apiClient.post<LogoutResponse>('/auth/logout'),
+  logout: (tokenId: string) => 
+    apiClient.post<LogoutResponse>('/auth/logout', { token_id: tokenId }),
   
   getCurrentUser: () => 
     apiClient.get<User>('/auth/me'),
   
+  resetPassword: (username: string, email: string) => 
+    apiClient.post('/auth/reset-password', { username, email }),
+
   refreshToken: () => 
     apiClient.post('/auth/refresh'),
-  
-  resetPassword: (email: string) => 
-    apiClient.post('/auth/reset-password', { email }),
-  
-  verifyToken: (token: string) => 
-    apiClient.post('/auth/verify-token', { token }),
+
+  verify: () => 
+    apiClient.post('/auth/verify'),
 }

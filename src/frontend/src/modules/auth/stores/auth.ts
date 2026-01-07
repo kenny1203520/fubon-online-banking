@@ -3,31 +3,45 @@ import { ref, computed } from 'vue'
 import { authService } from '../services/auth'
 import type { User } from '../types'
 
+const TOKEN_ID_KEY = 'auth_token_id'
 const TOKEN_KEY = 'auth_token'
 const USER_KEY = 'auth_user'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
+  const tokenId = ref<string | null>(localStorage.getItem(TOKEN_ID_KEY))
   const token = ref<string | null>(localStorage.getItem(TOKEN_KEY))
   const user = ref<User | null>(null)
   const isLoading = ref(false)
 
   // Computed
-  const isAuthenticated = computed(() => !!token.value && !!user.value)
+  const isAuthenticated = computed(async () => !!token.value && !!user.value && await verify())
 
   // Actions
+  const setTokenId = (newTokenId: string) => {
+    tokenId.value = newTokenId
+    localStorage.setItem(TOKEN_ID_KEY, newTokenId)
+  }
+
+  const setToken = (newToken: string) => {
+    token.value = newToken
+    localStorage.setItem(TOKEN_KEY, newToken)
+  }
+
   const login = async (username: string, password: string) => {
     isLoading.value = true
     try {
       const response = await authService.login(username, password)
-      token.value = response.data.token
-      localStorage.setItem(TOKEN_KEY, response.data.token)
+      setTokenId(response.data.token_id)
+      setToken(response.data.token)
       
       // 登入成功後獲取使用者資訊
       await getCurrentUser()
     } catch (error: unknown) {
+      tokenId.value = null
       token.value = null
       user.value = null
+      localStorage.removeItem(TOKEN_ID_KEY)
       localStorage.removeItem(TOKEN_KEY)
       localStorage.removeItem(USER_KEY)
       const err = error as { response?: { data?: { detail?: string } } }
@@ -53,14 +67,16 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = async () => {
     isLoading.value = true
     try {
-      if (token.value) {
-        await authService.logout()
+      if (tokenId.value) {
+        await authService.logout(tokenId.value)
       }
     } catch (error) {
       console.error('登出時發生錯誤:', error)
     } finally {
+      tokenId.value = null
       token.value = null
       user.value = null
+      localStorage.removeItem(TOKEN_ID_KEY)
       localStorage.removeItem(TOKEN_KEY)
       localStorage.removeItem(USER_KEY)
       isLoading.value = false
@@ -81,14 +97,27 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = async (username: string, email: string) => {
     isLoading.value = true
     try {
-      const response = await authService.resetPassword(email)
+      const response = await authService.resetPassword(username, email)
       return response.data
     } catch (error: unknown) {
       const err = error as { response?: { data?: { detail?: string } } }
       throw new Error(err.response?.data?.detail || '重設密碼失敗')
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const verify = async () => {
+    isLoading.value = true
+    try {
+      const response = await authService.verify()
+      return response.data
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { detail?: string } } }
+      throw new Error(err.response?.data?.detail || '驗證失敗')
     } finally {
       isLoading.value = false
     }
@@ -114,6 +143,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     // State
+    tokenId,
     token,
     user,
     isLoading,
@@ -125,6 +155,9 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     getCurrentUser,
     resetPassword,
-    initializeAuth
+    verify,
+    initializeAuth,
+    setTokenId,
+    setToken,
   }
 })

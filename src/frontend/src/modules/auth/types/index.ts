@@ -4,8 +4,9 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
+  token_id: string
   token: string
-  message: string
+  expires_in: number
   code: number
 }
 
@@ -19,20 +20,18 @@ export interface RegisterResponse {
   user_id: number
   username: string
   message: string
-  code: number
 }
 
 export interface LogoutRequest {
-  token: string
+  token_id: string
 }
 
 export interface LogoutResponse {
   message: string
-  code: number
 }
 
 export interface User {
-  id: number
+  user_id: number
   username: string
   email?: string
 }
