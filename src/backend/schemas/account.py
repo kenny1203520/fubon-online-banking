@@ -33,7 +33,7 @@ class AccountCreateRequest(BaseModel):
         """驗證帳戶類型"""
         allowed_types = ['savings', 'checking', 'fixed_deposit']
         if v not in allowed_types:
-            raise ValueError(f'帳戶類型必須為：{', '.join(allowed_types)}')
+            raise ValueError(f'帳戶類型必須為：{", ".join(allowed_types)}')
         return v
     
     @field_validator('initial_deposit')
