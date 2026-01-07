@@ -14,17 +14,19 @@ class TransferResponse(BaseModel):
     to_new_balance: float
 
 class CreditCardCreate(BaseModel):
-    full_name: str
-    id_number: str
-    annual_income: float
     card_type: str
+    annual_income: float
+    employment_status: str
+    company_name: Optional[str] = None
+    position: Optional[str] = None
 
 class CreditCardApplicationResponse(BaseModel):
     id: int
-    full_name: str
-    id_number: str
-    annual_income: Optional[float] = None
     card_type: str
+    annual_income: Optional[float] = None
+    employment_status: Optional[str] = None
+    company_name: Optional[str] = None
+    position: Optional[str] = None
     status: str
     created_at: str
 

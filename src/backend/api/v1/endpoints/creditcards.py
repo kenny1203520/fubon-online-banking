@@ -62,17 +62,27 @@ async def apply_creditcard(
     """
     Apply for a credit card (申請信用卡)  
     Parameters:
-    - full_name: Applicant's full name (申請人全名)
-    - id_number: Applicant's identification number (申請人身分證號)
-    - annual_income: Applicant's annual income (申請人年收入)
     - card_type: Type of credit card requested (申請的信用卡類型)
+    - annual_income: Applicant's annual income (申請人年收入)
+    - employment_status: Employment status (就業狀態)
+    - company_name: Company name (optional) (公司名稱，選填)
+    - position: Job position (optional) (職位，選填)
     """
+    # 確保使用者ID存在
+    if current_user.id is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail='user ID is None'
+        )
+    
     application = CreditCardApplication(
-        full_name=request.full_name,
-        id_number=request.id_number,
-        annual_income=request.annual_income,
+        user_id=current_user.id,
         card_type=request.card_type,
-        status='received',
+        annual_income=request.annual_income,
+        employment_status=request.employment_status,
+        company_name=request.company_name,
+        position=request.position,
+        status='pending',
         created_at=datetime.now(timezone.utc).isoformat()
     )
     session.add(application)
@@ -81,8 +91,9 @@ async def apply_creditcard(
     
     return {
         'application_id': application.id,
-        'status': 'received',
-        'message': '信用卡申請已收到'
+        'status': 'pending',
+        'message': '信用卡申請已成功提交，我們將在 3-5 個工作天內完成審核',
+        'estimated_processing_days': 5
     }
 
 @router.get("/{card_id}", name="取得信用卡詳情", status_code=status.HTTP_200_OK)

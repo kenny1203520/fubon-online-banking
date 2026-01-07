@@ -35,7 +35,7 @@ export interface CreditCardBill {
 }
 
 export interface CardApplicationRequest {
-  card_type: 'visa' | 'mastercard' | 'jcb' | 'amex'
+  card_type: string
   annual_income: number
   employment_status: 'employed' | 'self-employed' | 'unemployed' | 'retired'
   company_name?: string

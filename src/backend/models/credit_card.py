@@ -11,10 +11,12 @@ class CreditCard(SQLModel, table=True):
 
 class CreditCardApplication(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    full_name: str
-    id_number: str
-    annual_income: Optional[float] = None
+    user_id: Optional[int] = None
     card_type: str
+    annual_income: Optional[float] = None
+    employment_status: Optional[str] = None
+    company_name: Optional[str] = None
+    position: Optional[str] = None
     status: str = Field(default="received")
     created_at: str
 
