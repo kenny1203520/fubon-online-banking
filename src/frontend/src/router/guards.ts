@@ -148,12 +148,6 @@ export function securityGuard({ authStore }: RouteGuardContext) {
     return false
   }
 
-  // 檢查用戶會話
-  if (authStore.isAuthenticated && !authStore.user) {
-    authStore.logout()
-    return false
-  }
-
   return true
 }
 
@@ -219,7 +213,7 @@ export function setupRouterGuards(router: Router) {
  */
 export function canNavigate(routePath: string, authStore: AuthStore): boolean {
   const publicRoutes = ['/login', '/register', '/forgot-password', '/']
-  
+
   if (publicRoutes.includes(routePath)) {
     return true
   }
