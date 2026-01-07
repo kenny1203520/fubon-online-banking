@@ -3,10 +3,15 @@ from typing import Optional
 
 class Account(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    account_number: str = Field(default="", unique=True, index=True)
+    account_name: str = Field(default="")
     full_name: str
-    id_number: str
+    id_number: str = Field(index=True)
     email: Optional[str] = None
+    phone: str = Field(default="")
+    address: str = Field(default="")
+    account_type: str = Field(default="savings")  # savings, checking, fixed_deposit
     balance: float = Field(default=0.0)
-    status: str = Field(default="pending")
+    status: str = Field(default="pending")  # pending, active, inactive, closed
     cashless_enabled: int = Field(default=0)
     created_at: str
