@@ -18,7 +18,21 @@ const redirectTo = (route.query.redirect as string) || '/dashboard'
 
 function confirm() {
   localStorage.setItem('user_services', JSON.stringify(selected.value))
-  router.push(redirectTo)
+  
+  // 根據選擇的服務決定跳轉目標
+  if (selected.value.includes('accounts')) {
+    router.push('/accounts')
+  } else if (selected.value.includes('creditcards')) {
+    router.push('/creditcards')
+  } else if (selected.value.includes('investments')) {
+    router.push('/investments')
+  } else if (selected.value.includes('loans')) {
+    router.push('/loans')
+  } else if (selected.value.includes('transactions')) {
+    router.push('/transactions')
+  } else {
+    router.push(redirectTo)
+  }
 }
 
 function skip() {
