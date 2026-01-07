@@ -15,7 +15,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoading = ref(false)
 
   // Computed
-  const isAuthenticated = computed(async () => !!token.value && !!user.value && await verify())
+  const isAuthenticated = computed(() => !!token.value && !!user.value && verify())
 
   // Actions
   const setTokenId = (newTokenId: string) => {

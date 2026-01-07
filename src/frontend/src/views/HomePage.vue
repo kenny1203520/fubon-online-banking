@@ -6,10 +6,10 @@ import { computed } from 'vue'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const isAuthenticated = computed(() => authStore.isAuthenticated)
+const isAuthenticated = computed(() => authStore.isAuthenticated);
 
-const goToDashboard = () => {
-  if (isAuthenticated.value) {
+const goToDashboard = async () => {
+  if (await isAuthenticated.value) {
     router.push('/dashboard')
   } else {
     router.push('/login')
