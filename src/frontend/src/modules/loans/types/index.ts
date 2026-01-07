@@ -12,24 +12,34 @@ export interface LoanProduct {
 
 export interface Loan {
   id: number
-  product_id: number
-  product_name: string
-  loan_type: 'personal' | 'mortgage' | 'auto' | 'business'
+  user_id: number
+  product_id?: number
+  product_name?: string
+  loan_type?: 'personal' | 'mortgage' | 'auto' | 'business'
   loan_amount: number
   interest_rate: number
   term_months: number
   monthly_payment: number
   remaining_balance: number
-  next_payment_date: string
-  next_payment_amount: number
-  status: 'pending' | 'approved' | 'active' | 'paid_off' | 'defaulted'
+  status: 'pending' | 'approved' | 'active' | 'paid_off' | 'rejected'
+  purpose?: string
+  employment_status?: string
+  annual_income?: number
+  company_name?: string
+  years_employed?: number
+  has_collateral?: boolean
+  collateral_description?: string
   application_date: string
   approval_date?: string
+  disbursement_date?: string
+  last_payment_date?: string
+  next_payment_date?: string
+  next_payment_amount?: number
   start_date?: string
 }
 
 export interface LoanApplication {
-  product_id: number
+  product_id?: number
   loan_amount: number
   term_months: number
   purpose: string
@@ -41,6 +51,31 @@ export interface LoanApplication {
   collateral_description?: string
 }
 
+export interface LoanApplyRequest {
+  product_id?: number
+  loan_amount: number
+  term_months: number
+  purpose: string
+  employment_status: 'employed' | 'self-employed' | 'unemployed' | 'retired'
+  annual_income: number
+  company_name?: string
+  years_employed?: number
+  has_collateral: boolean
+  collateral_description?: string
+}
+
+export interface LoanApplyResponse {
+  application_id: number
+  status: string
+  message: string
+}
+
+export interface LoanCalculateRequest {
+  amount: number
+  interest_rate: number
+  term_months: number
+}
+
 export interface RepaymentSchedule {
   payment_number: number
   payment_date: string
@@ -48,7 +83,7 @@ export interface RepaymentSchedule {
   interest: number
   total_payment: number
   remaining_balance: number
-  status: 'pending' | 'paid' | 'overdue'
+  status?: 'pending' | 'paid' | 'overdue'
 }
 
 export interface RepaymentHistory {
@@ -59,12 +94,20 @@ export interface RepaymentHistory {
   principal: number
   interest: number
   remaining_balance: number
+  payment_method: string
+  transaction_id?: string
 }
 
 export interface RepaymentRequest {
   loan_id: number
   amount: number
-  payment_method: 'account' | 'atm' | 'online'
+  payment_method: string
+}
+
+export interface RepaymentResponse {
+  success: boolean
+  message: string
+  repayment: RepaymentHistory
 }
 
 export interface LoanCalculation {
