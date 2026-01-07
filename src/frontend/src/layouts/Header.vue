@@ -12,7 +12,7 @@ const isAuthenticated = computed(() => authStore.isAuthenticated)
 const handleLogout = async () => {
   await authStore.logout()
   isMenuOpen.value = false
-  router.push('/login')
+  router.push('/')
 }
 </script>
 
