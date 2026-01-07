@@ -23,6 +23,9 @@ cryptography>=41.0.0
 # API Documentation
 python-multipart>=0.0.6
 
+# Date and Time
+python-dateutil>=2.8.0
+
 # Development
 python-dotenv>=1.0.0
 black>=23.0.0
