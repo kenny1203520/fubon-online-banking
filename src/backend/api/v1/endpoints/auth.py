@@ -211,6 +211,7 @@ async def refresh(request: Request, session: Session = Depends(get_session)):
     } # 返回新的訪問token資訊
 
 @router.get('/verify', name="驗證訪問是否有效", status_code=status.HTTP_200_OK, response_model=bool)
+@router.post('/verify', name="驗證訪問是否有效", status_code=status.HTTP_200_OK, response_model=bool)
 async def verify(request: Request, session: Session = Depends(get_session))-> bool:
     """
     Verify access validity. (驗證訪問是否有效性)
@@ -234,10 +235,12 @@ async def verify(request: Request, session: Session = Depends(get_session))-> bo
     return True
 
 @router.get('/health', name="健康檢查", status_code=status.HTTP_200_OK)
+@router.post('/health', name="健康檢查", status_code=status.HTTP_200_OK)
 async def health():
     return {"status": "healthy"}
 
 @router.get('/me', name="獲取當前使用者", status_code=status.HTTP_200_OK, response_model=UserMeResponse)
+@router.post('/me', name="獲取當前使用者", status_code=status.HTTP_200_OK, response_model=UserMeResponse)
 async def me(request: Request, session: Session = Depends(get_session), user: User = Depends(get_current_user))-> UserMeResponse:
     """
     Get current authenticated user. (獲取當前認證的使用者)
