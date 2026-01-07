@@ -84,7 +84,7 @@ class ApiClient {
           }
         }
 
-        return this.client.get<T>(url, config)
+        return Promise.reject(error)
       },
     )
   }
