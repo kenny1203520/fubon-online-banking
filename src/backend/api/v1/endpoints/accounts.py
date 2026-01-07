@@ -2,13 +2,15 @@ from fastapi import APIRouter, HTTPException, status, Depends, Query
 from sqlmodel import Session, select, func
 from datetime import datetime, timezone
 from typing import Optional
+import random
+import string
 
 from models.account import Account
 from models.transaction import Transaction
 from models.user import User
 from schemas.account import (
     AccountCreate, AccountResponse, AccountList, BalanceRequest, BalanceResponse,
-    CashlessRequest, CashlessResponse
+    CashlessRequest, CashlessResponse, OpenAccountResponse
 )
 from schemas.transaction import TransactionList, TransactionResponse
 from schemas.credit_card import TransferRequest, TransferResponse
@@ -17,33 +19,92 @@ from core.auth import get_current_user
 
 router = APIRouter()
 
-@router.post('/open', status_code=status.HTTP_201_CREATED)
+def generate_account_number() -> str:
+    """生成唯一的銀行帳號 (格式: 012-XXX-XXXXXX)"""
+    # 銀行代碼 012
+    bank_code = "012"
+    # 分行代碼 (3位數字)
+    branch_code = ''.join(random.choices(string.digits, k=3))
+    # 帳號 (6位數字)
+    account_digits = ''.join(random.choices(string.digits, k=6))
+    return f"{bank_code}-{branch_code}-{account_digits}"
+
+def generate_account_name(account_type: str) -> str:
+    """根據帳戶類型生成帳戶名稱"""
+    type_names = {
+        'savings': '儲蓄帳戶',
+        'checking': '支票帳戶',
+        'fixed_deposit': '定期存款帳戶'
+    }
+    return type_names.get(account_type, '一般帳戶')
+
+@router.post('/open', status_code=status.HTTP_201_CREATED, response_model=OpenAccountResponse)
 async def open_account(request: AccountCreate, session: Session = Depends(get_session)):
     """
     Open a new account (申請新帳戶)  
     The account will be created with 'pending' status and requires approval.  
     (建立的帳戶將處於「待審核」狀態，需經過審核。)  
+    
+    NOTE: This endpoint does NOT require authentication to allow new customers to open accounts.
+    
     Parameters:
     - full_name: Full name of the account holder (帳戶持有人全名)
     - id_number: Identification number (身分證號)
+    - email: Email address (電子郵件)
+    - phone: Phone number (手機號碼)
+    - address: Address (地址)
+    - account_type: Account type (帳戶類型: savings, checking, fixed_deposit)
+    - initial_deposit: Initial deposit amount (初始存款金額)
     """
+    # 檢查是否已經有相同身分證的帳戶
+    existing = session.exec(
+        select(Account).where(Account.id_number == request.id_number)
+    ).first()
+    
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='此身分證號已有申請紀錄'
+        )
+    
+    # 生成唯一的帳號
+    while True:
+        account_number = generate_account_number()
+        existing_number = session.exec(
+            select(Account).where(Account.account_number == account_number)
+        ).first()
+        if not existing_number:
+            break
+    
+    # 生成帳戶名稱
+    account_name = generate_account_name(request.account_type)
+    
+    # 創建帳戶
     account = Account(
+        account_number=account_number,
+        account_name=account_name,
         full_name=request.full_name,
         id_number=request.id_number,
         email=request.email,
+        phone=request.phone,
+        address=request.address,
+        account_type=request.account_type,
         balance=request.initial_deposit,
         status='pending',
         created_at=datetime.now(timezone.utc).isoformat()
-    ) # 創建帳戶並設置初始狀態為「待審核」
-    session.add(account) # 將帳戶加入資料庫會話
-    session.commit() # 提交變更以保存帳戶
-    session.refresh(account) # 重新整理以獲取自動生成的ID等資訊
+    )
     
-    return {
-        'account_id': account.id,
-        'status': 'pending',
-        'message': '申請已建立，等待審核'
-    } # 返回帳戶ID和狀態訊息
+    session.add(account)
+    session.commit()
+    session.refresh(account)
+    
+    return OpenAccountResponse(
+        account_id=account.id,
+        account_number=account.account_number,
+        account_name=account.account_name,
+        status='pending',
+        message='申請已建立，等待審核。預計 1-3 個工作天完成審核。'
+    )
 
 @router.get('', response_model=AccountList)
 async def list_accounts(

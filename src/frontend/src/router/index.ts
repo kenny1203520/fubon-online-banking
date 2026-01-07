@@ -94,11 +94,11 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/accounts/open/new',
+    path: '/accounts/open',
     name: 'OpenAccount',
     component: () => import('@/modules/accounts/views/OpenAccountPage.vue'),
     meta: {
-      requiresAuth: true,
+      requiresAuth: false,
       title: '開立帳戶',
       description: '開立新帳戶頁面',
     },

@@ -17,11 +17,11 @@ api_router.include_router(
 )
 
 # Account management routes (帳戶管理路由)
+# NOTE: Dependencies removed from router level to allow /open endpoint without auth
 api_router.include_router(
     accounts.router, 
     prefix="/accounts", 
-    tags=["帳戶管理"],
-    dependencies=[Depends(security)]
+    tags=["帳戶管理"]
 )
 
 # Credit card management routes (信用卡管理路由)
