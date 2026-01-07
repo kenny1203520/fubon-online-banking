@@ -6,6 +6,9 @@ export interface Account {
   full_name: string
   id_number: string
   email?: string
+  phone: string
+  address: string
+  account_type: 'savings' | 'checking' | 'fixed_deposit'
   balance: number
   status: 'pending' | 'active' | 'inactive' | 'closed'
   cashless_enabled: boolean
@@ -16,14 +19,22 @@ export interface AccountCreate {
   full_name: string
   id_number: string
   email?: string
+  phone: string
+  address: string
+  account_type: 'savings' | 'checking' | 'fixed_deposit'
   initial_deposit: number
 }
 
 export interface AccountResponse {
   id: number
+  account_number: string
+  account_name: string
   full_name: string
   id_number: string
   email?: string
+  phone: string
+  address: string
+  account_type: string
   balance: number
   status: 'pending' | 'active' | 'inactive' | 'closed'
   cashless_enabled: boolean
@@ -60,6 +71,8 @@ export interface CashlessResponse {
 
 export interface OpenAccountResponse {
   account_id: number
+  account_number: string
+  account_name: string
   status: string
   message: string
 }
