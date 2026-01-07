@@ -26,8 +26,9 @@ const handleLogin = async () => {
   try {
     await authStore.login(username.value, password.value)
     
-    // 登入成功後直接轉跳到服務選擇頁面
-    router.push('/select-services')
+    // 登入成功後直接轉跳到儀表板
+    const redirect = route.query.redirect as string
+    router.push(redirect || '/dashboard')
   } catch (err) {
     error.value = err instanceof Error ? err.message : '登入失敗，請重試'
   } finally {
