@@ -185,6 +185,32 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/investments/products',
+    name: 'InvestmentProducts',
+    component: () => import('@/modules/investments/views/ProductsPage.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '投資產品',
+      description: '投資產品列表',
+      icon: 'product',
+      menuVisible: true,
+      category: 'investments',
+    },
+  },
+  {
+    path: '/investments/manage',
+    name: 'InvestmentManage',
+    component: () => import('@/modules/investments/views/ManagePage.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '投資管理',
+      description: '查詢與購買投資產品',
+      icon: 'manage',
+      menuVisible: true,
+      category: 'investments',
+    },
+  },
+  {
     path: '/investments/stocks',
     name: 'Stocks',
     component: () => import('@/modules/investments/views/StockPage.vue'),
