@@ -11,7 +11,8 @@ const accountStore = useAccountStore()
 const accountTypes = [
   { value: 'savings', label: '儲蓄帳戶', description: '適合日常存款，享有利息收益' },
   { value: 'checking', label: '支票帳戶', description: '適合頻繁交易，可開立支票' },
-  { value: 'fixed_deposit', label: '定期存款帳戶', description: '高利率，適合長期儲蓄' }
+  { value: 'fixed_deposit', label: '定期存款帳戶', description: '高利率，適合長期儲蓄' },
+  { value: 'foreign_currency', label: '外幣帳戶', description: '支持多種外幣存款，便於國際交易' }
 ]
 
 // 表單資料
@@ -21,7 +22,7 @@ const form = ref({
   email: '',
   phone: '',
   address: '',
-  account_type: 'savings' as 'savings' | 'checking' | 'fixed_deposit',
+  account_type: 'savings' as 'savings' | 'checking' | 'fixed_deposit' | 'foreign_currency',
   initial_deposit: 1000
 })
 
