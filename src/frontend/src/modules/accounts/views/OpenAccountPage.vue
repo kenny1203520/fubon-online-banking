@@ -37,10 +37,30 @@ const currentStep = ref(1)
 // 計算欄位錯誤狀態
 const fieldErrors = ref<Record<string, string>>({})
 
-// 驗證身分證號格式（台灣身分證號）
+// 驗證台灣身分證號格式與校驗碼
 const validateIdNumber = (idNumber: string): boolean => {
+  // 檢查基本格式：首位英文字母，第二位為1或2，後面8位數字，最後1位校驗碼
   const pattern = /^[A-Z][12]\d{8}$/
-  return pattern.test(idNumber)
+  if (!pattern.test(idNumber)) {
+    return false
+  }
+
+  // 驗證校驗碼（台灣身分證號算法）
+  // 英文字母對應編號：A=10, B=11, ..., Z=35
+  const letterCode = idNumber.charCodeAt(0) - 64 + 9
+  const digits = `${letterCode}${idNumber.substring(1)}`
+  
+  // 計算權重和
+  let sum = Math.floor(letterCode / 10) + (letterCode % 10) * 9
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(digits[i + 1]) * (9 - i)
+  }
+  
+  // 校驗碼應該是使總和 % 10 = 0
+  const checksum = (10 - (sum % 10)) % 10
+  const providedChecksum = parseInt(idNumber[9])
+  
+  return checksum === providedChecksum
 }
 
 // 驗證電子郵件格式
@@ -70,8 +90,10 @@ const validateField = (fieldName: string) => {
     case 'id_number':
       if (!form.value.id_number) {
         fieldErrors.value.id_number = '請輸入身分證號'
+      } else if (!/^[A-Z][12]\d{8}$/.test(form.value.id_number)) {
+        fieldErrors.value.id_number = '身分證號格式不正確（應為：一個大寫英文字母+1或2+8位數字）'
       } else if (!validateIdNumber(form.value.id_number)) {
-        fieldErrors.value.id_number = '身分證號格式不正確'
+        fieldErrors.value.id_number = '身分證號校驗失敗，請確認輸入無誤'
       }
       break
     case 'email':
