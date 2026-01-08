@@ -14,6 +14,6 @@ class Account(SQLModel, table=True):
     address: str = Field(default="")
     account_type: str = Field(default="savings")
     balance: float = Field(default=0.0)
-    status: str = Field(default="pending")
+    status: str = Field(default="active")
     cashless_enabled: int = Field(default=0)
     created_at: str

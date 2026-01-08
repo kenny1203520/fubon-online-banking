@@ -57,14 +57,14 @@ export function getBankByCode(code: string): BankInfo | undefined {
 
 /**
  * 驗證台灣銀行帳號格式
- * 格式: XXX-XXXX-XXXXXXX (銀行代碼3碼-分行代碼4碼-帳號7~10碼)
+ * 格式: XXX-XXXXXX (分行代碼3碼-帳號6碼，不含銀行代碼)
  */
 export function validateAccountNumber(bankCode: string, accountNumber: string): boolean {
   // 移除可能的分隔符號
   const cleanNumber = accountNumber.replace(/[-\s]/g, '')
   
-  // 基本長度檢查 (分行代碼4碼 + 帳號7~10碼 = 11~14碼)
-  if (cleanNumber.length < 11 || cleanNumber.length > 14) {
+  // 基本長度檢查 (分行代碼3碼 + 帳號6碼 = 9碼)
+  if (cleanNumber.length !== 9) {
     return false
   }
   
@@ -78,18 +78,20 @@ export function validateAccountNumber(bankCode: string, accountNumber: string): 
 
 /**
  * 格式化帳號顯示 (加入分隔符號)
- * 例: 0123456789012 -> 012-3456-789012
+ * 輸入格式: 525947586 或 525-947586 (分行3碼+帳號6碼)
+ * 輸出格式: 012-525-947586 (銀行3碼-分行3碼-帳號6碼)
  */
 export function formatAccountNumber(bankCode: string, accountNumber: string): string {
   const cleanNumber = accountNumber.replace(/[-\s]/g, '')
   
-  if (cleanNumber.length < 11) {
+  // 檢查長度是否正確 (分行3碼 + 帳號6碼 = 9碼)
+  if (cleanNumber.length !== 9) {
     return accountNumber
   }
   
-  // 格式: 銀行代碼(3) - 分行代碼(4) - 帳號(剩餘)
-  const branch = cleanNumber.substring(0, 4)
-  const account = cleanNumber.substring(4)
+  // 格式: 分行代碼(3) + 帳號(6)
+  const branch = cleanNumber.substring(0, 3)
+  const account = cleanNumber.substring(3)
   
   return `${bankCode}-${branch}-${account}`
 }

@@ -65,7 +65,7 @@ const errorText = computed(() => {
   if (!form.value.from_account_id) return '請選擇轉出帳戶'
   if (!selectedBank.value) return '請選擇收款銀行'
   if (!accountNumber.value) return '請輸入收款帳號'
-  if (!isAccountNumberValid.value) return '帳號格式不正確（應為11~14碼數字）'
+  if (!isAccountNumberValid.value) return '帳號格式不正確（應為分行代碼3碼+帳號6碼，共9碼數字）'
   if (form.value.amount <= 0) return '請輸入有效的轉帳金額'
   if (selectedAccount.value && totalAmount.value > selectedAccount.value.balance) {
     return '帳戶餘額不足'
@@ -279,11 +279,11 @@ onMounted(() => {
               type="text"
               class="form-input"
               placeholder="請輸入分行代碼及帳號 (例: 12345678901)"
-              maxlength="14"
+              maxlength="9"
               required
             >
             <div class="input-hint">
-              <span v-if="!accountNumber">格式：分行代碼(4碼) + 帳號(7~10碼)</span>
+              <span v-if="!accountNumber">格式：分行代碼(3碼) + 帳號(6碼)，例: 525-947586</span>
               <span v-else-if="!isAccountNumberValid" class="text-error">❌ 帳號格式不正確</span>
               <span v-else class="text-success">✓ 完整帳號：{{ fullAccountNumber }}</span>
             </div>

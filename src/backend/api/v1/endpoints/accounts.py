@@ -209,7 +209,7 @@ async def open_account(request: AccountCreateRequest, current_user: User = Depen
         address=request.address,
         account_type=request.account_type,
         balance=request.initial_deposit,
-        status='pending',
+        status='active',
         created_at=datetime.now(timezone.utc).isoformat()
     )
     
