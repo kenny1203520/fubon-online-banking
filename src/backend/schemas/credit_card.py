@@ -3,10 +3,10 @@ from pydantic import BaseModel
 
 
 class TransferRequest(BaseModel):
-    from_account: int
-    to_account: int
+    from_account_number: str
+    to_account_number: str
     amount: float
-    currency: Optional[str] = "TWD"
+    currency: str = "TWD"
 
 class TransferResponse(BaseModel):
     message: str
