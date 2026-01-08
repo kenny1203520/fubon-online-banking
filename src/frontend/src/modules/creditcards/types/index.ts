@@ -62,6 +62,26 @@ export interface PaymentResponse {
   remaining_balance: number
 }
 
+export interface CreditCardApplication {
+  id: number
+  user_id: string
+  card_type: string
+  annual_income: number
+  employment_status: string
+  company_name: string
+  position: string
+  status: string
+  created_at: string
+}
+
+export interface CreditCardApplicationListResponse {
+  items: CreditCardApplication[]
+  page: number
+  per_page: number
+  total: number
+  total_pages: number
+}
+
 export interface CreditCardState {
   cards: CreditCard[]
   currentCard: CreditCard | null

@@ -6,15 +6,16 @@ import type {
   CardApplicationRequest,
   CardApplicationResponse,
   PaymentRequest,
-  PaymentResponse
+  PaymentResponse,
+  CreditCardApplicationListResponse
 } from '../types'
 
 export const creditCardService = {
   /**
-   * 取得所有信用卡
+   * 取得所有信用卡申請
    */
   getCards: () => 
-    apiClient.get<CreditCard[]>('/creditcards'),
+    apiClient.get<CreditCardApplicationListResponse>('/creditcards').then(response => response.data.items),
   
   /**
    * 取得單張信用卡詳情
