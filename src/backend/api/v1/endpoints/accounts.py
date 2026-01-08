@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Query
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, desc
 from datetime import datetime, timezone
 from typing import Optional
 import random
@@ -10,7 +10,7 @@ from models.transaction import Transaction
 from models.user import User
 from schemas.account import (
     AccountCreateRequest, AccountResponse, AccountListResponse, BalanceRequest, BalanceResponse,
-    CashlessRequest, CashlessResponse, OpenAccountResponse
+    CashlessRequest, CashlessResponse, AccountCreateResponse
 )
 from schemas.transaction import TransactionList, TransactionResponse
 from schemas.credit_card import TransferRequest, TransferResponse
@@ -54,10 +54,10 @@ async def list_accounts(
     offset = (page - 1) * per_page # 計算偏移量
     
     # Get total count of accounts
-    total = session.exec(func.select(func.count(Account.id))).one()
+    total = session.exec(select(func.count()).where(Account.user_id == current_user.id)).first() or 0
     
     # Get accounts for the requested page
-    statement = select(Account).order_by(Account.id.desc()).offset(offset).limit(per_page)
+    statement = select(Account).where(Account.user_id == current_user.id).order_by(desc(Account.id)).offset(offset).limit(per_page)
     accounts = session.exec(statement).all()
 
     # 計算總頁數
@@ -71,8 +71,8 @@ async def list_accounts(
         'total_pages': total_pages
     } # 返回帳戶列表和分頁資訊
 
-@router.post('/open', status_code=status.HTTP_201_CREATED, response_model=OpenAccountResponse)
-async def open_account(request: AccountCreateRequest, session: Session = Depends(get_session)):
+@router.post('/open', status_code=status.HTTP_201_CREATED, response_model=AccountCreateResponse)
+async def open_account(request: AccountCreateRequest, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     """
     Open a new account (申請新帳戶)  
     The account will be created with 'pending' status and requires approval.  
@@ -89,6 +89,18 @@ async def open_account(request: AccountCreateRequest, session: Session = Depends
     - account_type: Account type (帳戶類型: savings, checking, fixed_deposit)
     - initial_deposit: Initial deposit amount (初始存款金額)
     """
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='authentication required to open account'
+        )
+    
+    if not current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='invalid user information'
+        )
+
     # 檢查是否已經有相同身分證的帳戶
     existing = session.exec(
         select(Account).where(Account.id_number == request.id_number)
@@ -111,9 +123,10 @@ async def open_account(request: AccountCreateRequest, session: Session = Depends
     
     # 生成帳戶名稱
     account_name = generate_account_name(request.account_type)
-    
+
     # 創建帳戶
     account = Account(
+        user_id=current_user.id,
         account_number=account_number,
         account_name=account_name,
         full_name=request.full_name,
@@ -130,8 +143,14 @@ async def open_account(request: AccountCreateRequest, session: Session = Depends
     session.add(account)
     session.commit()
     session.refresh(account)
+
+    if not account.id:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail='帳戶建立失敗，請稍後再試'
+        )
     
-    return OpenAccountResponse(
+    return AccountCreateResponse(
         account_id=account.id,
         account_number=account.account_number,
         account_name=account.account_name,

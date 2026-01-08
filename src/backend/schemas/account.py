@@ -1,5 +1,6 @@
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr, field_validator
+import uuid
 import re
 
 class AccountCreateRequest(BaseModel):
@@ -46,13 +47,8 @@ class AccountCreateRequest(BaseModel):
             raise ValueError('初始存款金額不可超過 10,000,000 元')
         return v
 
-class AccountCreateResponse(BaseModel):
-    account_id: int
-    status: str
-    message: str
-
 class AccountResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     account_number: str
     account_name: str
     full_name: str
@@ -69,8 +65,8 @@ class AccountResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class OpenAccountResponse(BaseModel):
-    account_id: int
+class AccountCreateResponse(BaseModel):
+    account_id: uuid.UUID
     account_number: str
     account_name: str
     status: str
@@ -84,17 +80,17 @@ class AccountListResponse(BaseModel):
     total_pages: int
 
 class BalanceRequest(BaseModel):
-    account_id: int
+    account_id: uuid.UUID
 
 class BalanceResponse(BaseModel):
-    account_id: int
+    account_id: uuid.UUID
     balance: float
     cashless_enabled: bool
 
 class CashlessRequest(BaseModel):
-    account_id: int
+    account_id: uuid.UUID
     enabled: bool
 
 class CashlessResponse(BaseModel):
-    account_id: int
+    account_id: uuid.UUID
     cashless_enabled: bool
