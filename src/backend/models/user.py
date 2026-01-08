@@ -7,7 +7,10 @@ class User(SQLModel, table=True):
     username: str = Field(index=True, unique=True)
     password_hash: str
     email: Optional[str] = Field(default=None, index=True)
+    is_admin: bool = Field(default=False, index=True)
     created_at: str
+
+role: str = Field(default="user", index=True)
 
 class SessionModel(SQLModel, table=True):
     """

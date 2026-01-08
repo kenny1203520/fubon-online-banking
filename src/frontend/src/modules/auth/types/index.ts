@@ -17,7 +17,7 @@ export interface RegisterRequest {
 }
 
 export interface RegisterResponse {
-  user_id: number
+  user_id: string
   username: string
   message: string
 }
@@ -30,10 +30,13 @@ export interface LogoutResponse {
   message: string
 }
 
+export type UserRole = 'user' | 'admin'
+
 export interface User {
-  user_id: number
+  user_id: string
   username: string
   email?: string
+  role?: UserRole
 }
 
 export interface AuthState {

@@ -17,6 +17,9 @@ export const useAuthStore = defineStore('auth', () => {
   // Computed
   const isAuthenticated = computed(() => !!token.value && !!user.value)
 
+  // admin?
+  const isAdmin = computed(() => user.value?.role === 'admin')
+
   // Actions
   const clearAuthState = () => {
     tokenId.value = null
@@ -25,6 +28,23 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(TOKEN_ID_KEY)
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
+  }
+
+  const verifySession = async () => {
+    try {
+      authService.verify()
+      const ok = await verify()
+
+      if (!ok) {
+        clearAuthState()
+        return false
+      }
+      await getCurrentUser()
+      return true
+    } catch (e) {
+      clearAuthState()
+      return false
+    }
   }
 
   const setTokenId = (newTokenId: string) => {
@@ -147,6 +167,9 @@ export const useAuthStore = defineStore('auth', () => {
         logout()
       }
     }
+    if (token.value) {
+      void verifySession()
+    }
   }
 
   const initAuth = async () => {
@@ -173,6 +196,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading,
     // Computed
     isAuthenticated,
+    isAdmin,
     // Actions
     login,
     register,
@@ -180,6 +204,7 @@ export const useAuthStore = defineStore('auth', () => {
     getCurrentUser,
     resetPassword,
     verify,
+    verifySession,
     initializeAuth,
     setTokenId,
     setToken,
