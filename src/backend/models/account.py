@@ -13,6 +13,7 @@ class Account(SQLModel, table=True):
     phone: str = Field(default="")
     address: str = Field(default="")
     account_type: str = Field(default="savings")
+    currency: str = Field(default="TWD")  # 帳戶幣種：外幣帳戶為空字符串（支持多幣種），一般帳戶為TWD
     balance: float = Field(default=0.0)
     status: str = Field(default="active")
     cashless_enabled: int = Field(default=0)

@@ -9,6 +9,7 @@ export interface Account {
   phone: string
   address: string
   account_type: 'savings' | 'checking' | 'fixed_deposit' | 'foreign_currency' | 'investment'
+  currency: string
   balance: number
   status: 'pending' | 'active' | 'inactive' | 'closed'
   cashless_enabled: boolean
@@ -22,6 +23,7 @@ export interface AccountCreate {
   phone: string
   address: string
   account_type: 'savings' | 'checking' | 'fixed_deposit' | 'foreign_currency' | 'investment'
+  currency?: string
   initial_deposit: number
 }
 
@@ -35,6 +37,7 @@ export interface AccountResponse {
   phone: string
   address: string
   account_type: string
+  currency: string
   balance: number
   status: 'pending' | 'active' | 'inactive' | 'closed'
   cashless_enabled: boolean

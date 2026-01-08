@@ -188,6 +188,19 @@ async def open_account(request: AccountCreateRequest, current_user: User = Depen
             detail=f'此身分證號已申請過 {request.account_type} 類型的帳戶'
         )
     
+    # 驗證外幣帳戶的特殊規則
+    if request.account_type == 'foreign_currency':
+        # 外幣帳戶不需要選擇幣種（可以存多種幣），currency可以為空
+        request.currency = ''
+    else:
+        # 非外幣帳戶只能使用台幣
+        if request.currency and request.currency != 'TWD':
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='一般帳戶只能使用台幣'
+            )
+        request.currency = 'TWD'
+    
     # 生成唯一的帳號
     while True:
         account_number = generate_account_number()
@@ -211,6 +224,7 @@ async def open_account(request: AccountCreateRequest, current_user: User = Depen
         phone=request.phone,
         address=request.address,
         account_type=request.account_type,
+        currency=request.currency,  # 外幣帳戶為空，一般帳戶為TWD
         balance=request.initial_deposit,
         status='active',
         created_at=datetime.now(timezone.utc).isoformat()

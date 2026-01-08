@@ -24,13 +24,37 @@ const transactionFilters = ref({
   to: ''
 })
 
-// 格式化金額
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('zh-TW', {
-    style: 'currency',
-    currency: 'TWD',
-    minimumFractionDigits: 0
-  }).format(amount)
+// 幣種符號映射
+const currencySymbols: Record<string, string> = {
+  'TWD': 'NT$',
+  'USD': '$',
+  'EUR': '€',
+  'JPY': '¥',
+  'GBP': '£',
+  'CNY': '¥',
+  'HKD': 'HK$',
+  'AUD': 'A$',
+  'SGD': 'S$',
+  'KRW': '₩'
+}
+
+// 格式化金額（支援不同幣種）
+const formatCurrency = (amount: number, currencyCode: string = 'TWD'): string => {
+  // 外幣帳戶的currency可能為空，此時顯示為多幣種
+  if (!currencyCode) {
+    const formatted = amount.toLocaleString('zh-TW', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    })
+    return `${formatted}`
+  }
+  
+  const symbol = currencySymbols[currencyCode] || currencyCode
+  const formatted = amount.toLocaleString('zh-TW', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  })
+  return `${symbol} ${formatted}`
 }
 
 // 格式化日期時間
@@ -231,7 +255,7 @@ onMounted(() => {
             <div class="balance-display">
               <span class="balance-label">帳戶餘額</span>
               <span class="balance-amount">
-                {{ formatCurrency(accountStore.currentAccount.balance) }}
+                {{ formatCurrency(accountStore.currentAccount.balance, accountStore.currentAccount.currency) }}
               </span>
             </div>
 
@@ -277,6 +301,10 @@ onMounted(() => {
               <div class="info-item">
                 <span class="info-label">電子郵件</span>
                 <span class="info-value">{{ accountStore.currentAccount.email || '未提供' }}</span>
+              </div>
+              <div v-if="accountStore.currentAccount.account_type === 'foreign_currency'" class="info-item">
+                <span class="info-label">帳戶特性</span>
+                <span class="info-value">可存放多種外幣（非台幣）</span>
               </div>
               <div class="info-item">
                 <span class="info-label">開戶日期</span>

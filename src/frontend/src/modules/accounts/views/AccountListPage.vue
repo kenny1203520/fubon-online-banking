@@ -10,13 +10,37 @@ const accountStore = useAccountStore()
 
 const error = ref<string | null>(null)
 
-// 格式化金額
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('zh-TW', {
-    style: 'currency',
-    currency: 'TWD',
-    minimumFractionDigits: 0
-  }).format(amount)
+// 幣種符號映射
+const currencySymbols: Record<string, string> = {
+  'TWD': 'NT$',
+  'USD': '$',
+  'EUR': '€',
+  'JPY': '¥',
+  'GBP': '£',
+  'CNY': '¥',
+  'HKD': 'HK$',
+  'AUD': 'A$',
+  'SGD': 'S$',
+  'KRW': '₩'
+}
+
+// 格式化金額（支援不同幣種）
+const formatCurrency = (amount: number, currencyCode: string = 'TWD'): string => {
+  // 外幣帳戶的currency可能為空，此時顯示為多幣種
+  if (!currencyCode) {
+    const formatted = amount.toLocaleString('zh-TW', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    })
+    return `${formatted}`
+  }
+  
+  const symbol = currencySymbols[currencyCode] || currencyCode
+  const formatted = amount.toLocaleString('zh-TW', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  })
+  return `${symbol} ${formatted}`
 }
 
 // 格式化日期
@@ -201,12 +225,16 @@ onMounted(() => {
               <span class="detail-label">開戶日期</span>
               <span class="detail-value">{{ formatDate(account.created_at) }}</span>
             </div>
+            <div v-if="account.account_type === 'foreign_currency'" class="account-detail">
+              <span class="detail-label">帳戶特性</span>
+              <span class="detail-value">可存多種外幣</span>
+            </div>
           </div>
 
           <div class="account-footer">
             <div class="balance-section">
               <span class="balance-label">帳戶餘額</span>
-              <span class="balance-amount">{{ formatCurrency(account.balance) }}</span>
+              <span class="balance-amount">{{ formatCurrency(account.balance, account.currency) }}</span>
             </div>
             <div class="account-actions">
               <button

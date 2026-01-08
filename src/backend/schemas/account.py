@@ -10,7 +10,8 @@ class AccountCreateRequest(BaseModel):
     phone: str
     address: str
     account_type: str = 'savings'
-    initial_deposit: float
+    currency: Optional[str] = 'TWD'  # 外幣帳戶時可為空（表示多幣種）
+    initial_deposit: float = 0  # 外幣帳戶開戶時可為0
 
     @field_validator('id_number')
     @classmethod
@@ -37,12 +38,28 @@ class AccountCreateRequest(BaseModel):
             raise ValueError(f'帳戶類型必須為：{", ".join(allowed_types)}')
         return v
     
+    @field_validator('currency')
+    @classmethod
+    def validate_currency(cls, v: str, info) -> str:
+        """驗證幣種"""
+        # 外幣帳戶的currency可以為空或None，表示支持多幣種
+        if not v:
+            return v
+        allowed_currencies = ['TWD', 'USD', 'EUR', 'JPY', 'GBP', 'CNY', 'HKD', 'AUD', 'SGD', 'KRW']
+        if v not in allowed_currencies:
+            raise ValueError(f'幣種必須為：{", ".join(allowed_currencies)}')
+        return v
+    
     @field_validator('initial_deposit')
     @classmethod
-    def validate_initial_deposit(cls, v: float) -> float:
+    def validate_initial_deposit(cls, v: float, info) -> float:
         """驗證初始存款金額"""
-        if v < 1000:
-            raise ValueError('初始存款金額至少需要 1,000 元')
+        # 外幣帳戶開戶時可以不存款（初始存款為0）
+        # 其他帳戶類型需要最少1000元
+        data = info.data
+        if data.get('account_type') != 'foreign_currency':
+            if v < 1000:
+                raise ValueError('初始存款金額至少需要 1,000 元')
         if v > 10000000:
             raise ValueError('初始存款金額不可超過 10,000,000 元')
         return v
@@ -57,6 +74,7 @@ class AccountResponse(BaseModel):
     phone: str
     address: str
     account_type: str
+    currency: str
     balance: float
     status: str
     cashless_enabled: bool

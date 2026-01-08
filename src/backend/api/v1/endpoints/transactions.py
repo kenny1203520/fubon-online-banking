@@ -391,7 +391,8 @@ async def exchange(
     換匯交易 (Currency exchange)
     
     Parameters:
-    - from_account: 來源帳戶ID (source account ID)
+    - from_account: 來源帳戶ID (source account ID - 台幣帳戶)
+    - to_account: 目標帳戶ID (target account ID - 外幣帳戶)
     - from_currency: 來源幣別 (source currency, e.g., TWD)
     - to_currency: 目標幣別 (target currency, e.g., USD)
     - amount: 換匯金額 (exchange amount)
@@ -411,16 +412,73 @@ async def exchange(
             detail="Source and target currencies must be different"
         )
     
-    # 取得帳戶
-    account = session.get(Account, request.from_account)
-    if not account:
+    # 取得來源帳戶（台幣帳戶）
+    from_account = session.get(Account, request.from_account)
+    if not from_account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found"
+            detail="Source account not found"
         )
     
-    # 驗證餘額
-    if account.balance < request.amount:
+    # 驗證來源帳戶是否屬於當前用戶
+    if from_account.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized to access this account"
+        )
+    
+    # 驗證來源帳戶狀態
+    if from_account.status != 'active':
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Source account is {from_account.status}"
+        )
+    
+    # 驗證來源帳戶幣種
+    if from_account.currency != request.from_currency:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Source account currency is {from_account.currency}, not {request.from_currency}"
+        )
+    
+    # 取得目標帳戶（外幣帳戶）
+    to_account = session.get(Account, request.to_account)
+    if not to_account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Target account not found"
+        )
+    
+    # 驗證目標帳戶是否屬於當前用戶
+    if to_account.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized to access target account"
+        )
+    
+    # 驗證目標帳戶必須是外幣帳戶
+    if to_account.account_type != 'foreign_currency':
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Target account must be a foreign currency account"
+        )
+    
+    # 驗證目標帳戶狀態
+    if to_account.status != 'active':
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Target account is {to_account.status}"
+        )
+    
+    # 驗證目標帳戶幣種
+    if to_account.currency != request.to_currency:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Target account currency is {to_account.currency}, not {request.to_currency}"
+        )
+    
+    # 驗證來源帳戶餘額
+    if from_account.balance < request.amount:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Insufficient balance"
@@ -439,30 +497,55 @@ async def exchange(
     
     # 執行換匯
     now = datetime.now(timezone.utc).isoformat()
+    transaction_number = generate_transaction_number()
     
-    # 更新帳戶餘額
-    account.balance -= request.amount
+    # 更新來源帳戶餘額（扣款）
+    from_account.balance -= request.amount
     
-    # 建立交易記錄
-    transaction = Transaction(
+    # 更新目標帳戶餘額（入款）
+    to_account.balance += to_amount
+    
+    # 建立來源帳戶的交易記錄（換匯扣款）
+    from_transaction = Transaction(
+        transaction_number=transaction_number + "-OUT",
         account_id=request.from_account,
-        account_number=account.account_number,
+        account_number=from_account.account_number,
         type="exchange",
-        amount=request.amount,
+        amount=-request.amount,  # 負數表示扣款
         currency=request.from_currency,
-        description=request.description or f"換匯 {request.from_currency} {request.amount} 至 {request.to_currency} {to_amount:.2f}",
+        related_account_id=request.to_account,
+        related_account_number=to_account.account_number,
+        status="completed",
+        description=request.description or f"換匯 {request.from_currency} {request.amount:.2f} 至 {request.to_currency} {to_amount:.2f}",
         created_at=now
     )
     
-    session.add(account)
-    session.add(transaction)
+    # 建立目標帳戶的交易記錄（換匯入款）
+    to_transaction = Transaction(
+        transaction_number=transaction_number + "-IN",
+        account_id=request.to_account,
+        account_number=to_account.account_number,
+        type="exchange",
+        amount=to_amount,  # 正數表示入款
+        currency=request.to_currency,
+        related_account_id=request.from_account,
+        related_account_number=from_account.account_number,
+        status="completed",
+        description=request.description or f"收到換匯 {request.from_currency} {request.amount:.2f} 轉入 {request.to_currency} {to_amount:.2f}",
+        created_at=now
+    )
+    
+    session.add(from_account)
+    session.add(to_account)
+    session.add(from_transaction)
+    session.add(to_transaction)
     session.commit()
-    session.refresh(transaction)
+    session.refresh(from_transaction)
     
     return {
-        "transaction_id": transaction.id,
+        "transaction_id": from_transaction.id,
         "from_account": request.from_account,
-        "to_account": request.from_account,
+        "to_account": request.to_account,
         "from_amount": request.amount,
         "to_amount": to_amount,
         "exchange_rate": exchange_rate,

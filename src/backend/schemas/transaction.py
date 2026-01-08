@@ -83,7 +83,8 @@ class TransferResponse(BaseModel):
         from_attributes = True
 
 class ExchangeRequest(BaseModel):
-    from_account: int
+    from_account: uuid.UUID  # 來源帳戶（台幣帳戶）
+    to_account: uuid.UUID    # 目標帳戶（外幣帳戶）
     from_currency: str
     to_currency: str
     amount: float
@@ -91,8 +92,8 @@ class ExchangeRequest(BaseModel):
 
 class ExchangeResponse(BaseModel):
     transaction_id: int
-    from_account: int
-    to_account: int
+    from_account: uuid.UUID
+    to_account: uuid.UUID
     from_amount: float
     to_amount: float
     exchange_rate: float

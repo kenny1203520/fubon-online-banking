@@ -16,6 +16,20 @@ const accountTypes = [
   { value: 'investment', label: '投資帳戶', description: '連結投資商品，支援買賣與績效查詢' }
 ]
 
+// 幣種選項
+const currencies = [
+  { code: 'TWD', name: '新台幣', symbol: 'NT$' },
+  { code: 'USD', name: '美元', symbol: '$' },
+  { code: 'EUR', name: '歐元', symbol: '€' },
+  { code: 'JPY', name: '日圓', symbol: '¥' },
+  { code: 'GBP', name: '英鎊', symbol: '£' },
+  { code: 'CNY', name: '人民幣', symbol: '¥' },
+  { code: 'HKD', name: '港幣', symbol: 'HK$' },
+  { code: 'AUD', name: '澳幣', symbol: 'A$' },
+  { code: 'SGD', name: '新加坡幣', symbol: 'S$' },
+  { code: 'KRW', name: '韓元', symbol: '₩' }
+]
+
 // 表單資料
 const form = ref({
   full_name: '',
@@ -24,7 +38,26 @@ const form = ref({
   phone: '',
   address: '',
   account_type: 'savings' as 'savings' | 'checking' | 'fixed_deposit' | 'foreign_currency' | 'investment',
+  currency: 'TWD',
   initial_deposit: 1000
+})
+
+// 檢查是否為外幣帳戶
+const isForeignCurrencyAccount = computed(() => form.value.account_type === 'foreign_currency')
+
+// 監聽帳戶類型變化
+watch(() => form.value.account_type, (newType) => {
+  if (newType === 'foreign_currency') {
+    // 外幣帳戶設為多幣種模式（空字符串表示支持多種幣種）
+    form.value.currency = ''
+    // 外幣帳戶不需要初始存款
+    form.value.initial_deposit = 0
+  } else {
+    // 一般帳戶只能使用台幣
+    form.value.currency = 'TWD'
+    // 一般帳戶預設初始存款
+    form.value.initial_deposit = 1000
+  }
 })
 
 const isLoading = ref(false)
@@ -36,6 +69,24 @@ const currentStep = ref(1)
 
 // 計算欄位錯誤狀態
 const fieldErrors = ref<Record<string, string>>({})
+
+// 選中的帳戶類型
+const selectedAccountType = computed(() => {
+  return accountTypes.find(t => t.value === form.value.account_type)
+})
+
+// 格式化金額顯示
+const formatCurrencyAmount = (amount: number, currencyCode: string) => {
+  const currency = currencies.find(c => c.code === currencyCode)
+  if (!currency) return `${amount.toLocaleString()} ${currencyCode}`
+  
+  const formatted = amount.toLocaleString('zh-TW', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  })
+  
+  return `${currency.symbol} ${formatted}`
+}
 
 // 驗證台灣身分證號格式與校驗碼
 const validateIdNumber = (idNumber: string): boolean => {
@@ -128,14 +179,17 @@ const validateForm = (): boolean => {
   validateField('phone')
   validateField('address')
 
-  if (form.value.initial_deposit < 1000) {
-    error.value = '初始存款金額至少需要 1,000 元'
-    return false
-  }
+  // 非外幣帳戶需要驗證初始存款
+  if (!isForeignCurrencyAccount.value) {
+    if (form.value.initial_deposit < 1000) {
+      error.value = '初始存款金額至少需要 1,000 元'
+      return false
+    }
 
-  if (form.value.initial_deposit > 10000000) {
-    error.value = '初始存款金額不可超過 10,000,000 元'
-    return false
+    if (form.value.initial_deposit > 10000000) {
+      error.value = '初始存款金額不可超過 10,000,000 元'
+      return false
+    }
   }
 
   if (!agreedToTerms.value) {
@@ -189,18 +243,47 @@ const handleSubmit = async () => {
     return
   }
 
-  isLoading.value = true
+  // 檢查驗證結果
+  if (form.value.initial_deposit < 1000 && !isForeignCurrencyAccount.value) {
+    error.value = '初始存款金額至少需要 1,000 元'
+    return false
+  }
 
-  try {
-    const result = await accountStore.openAccount({
-      full_name: form.value.full_name,
-      id_number: form.value.id_number,
-      email: form.value.email || undefined,
-      phone: form.value.phone,
-      address: form.value.address,
-      account_type: form.value.account_type,
-      initial_deposit: form.value.initial_deposit
-    })
+  if (form.value.initial_deposit > 10000000) {
+    error.value = '初始存款金額不可超過 10,000,000 元'
+    return false
+  }
+
+  if (!agreedToTerms.value) {
+    error.value = '請同意服務條款及隱私權政策'
+    return false
+  }
+
+  return Object.keys(fieldErrors.value).length === 0
+}
+
+// 驗證所有欄位（對外幣帳戶的初始存款不做驗證）
+const validateForm = (): boolean => {
+  fieldErrors.value = {}
+
+  validateField('full_name')
+  validateField('id_number')
+  validateField('email')
+  validateField('phone')
+  validateField('address')
+
+  // 非外幣帳戶需要驗證初始存款
+  if (!isForeignCurrencyAccount.value) {
+    if (form.value.initial_deposit < 1000) {
+      error.value = '初始存款金額至少需要 1,000 元'
+      return false
+    }
+
+    if (form.value.initial_deposit > 10000000) {
+      error.value = '初始存款金額不可超過 10,000,000 元'
+      return false
+    }
+  }
 
     success.value = result.message
     successDetails.value = {
@@ -216,6 +299,7 @@ const handleSubmit = async () => {
       phone: '',
       address: '',
       account_type: 'savings',
+      currency: 'TWD',
       initial_deposit: 1000
     }
     agreedToTerms.value = false
@@ -520,8 +604,8 @@ watch(() => form.value.account_type, (v) => {
               </div>
             </div>
 
-            <!-- 初始存款 -->
-            <div class="form-group">
+            <!-- 帳戶幣種（僅外幣帳戶顯示） -->
+            <div v-if="!isForeignCurrencyAccount" class="form-group">
               <label for="initial_deposit" class="form-label">
                 初始存款金額（元） <span class="required">*</span>
               </label>
@@ -540,11 +624,22 @@ watch(() => form.value.account_type, (v) => {
               <span class="form-hint">最低金額：1,000 元，最高金額：10,000,000 元</span>
             </div>
 
+            <!-- 外幣帳戶提示 -->
+            <div v-if="isForeignCurrencyAccount" class="form-info-box">
+              <span class="info-icon">ℹ️</span>
+              <div class="info-content">
+                <strong>外幣帳戶</strong>
+                <p>您開設的外幣帳戶可以存放多種外幣（美元、歐元、日圓等），開戶後可自由轉入各種幣種。</p>
+              </div>
+            </div>
+
+            <!-- 初始存款 -->
+
             <!-- 金額預覽 -->
-            <div v-if="form.initial_deposit >= 1000" class="amount-preview">
+            <div v-if="!isForeignCurrencyAccount && form.initial_deposit >= 1000" class="amount-preview">
               <span class="preview-label">初始存款金額：</span>
               <span class="preview-amount">
-                {{ new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', minimumFractionDigits: 0 }).format(form.initial_deposit) }}
+                {{ formatCurrencyAmount(form.initial_deposit, form.currency) }}
               </span>
             </div>
 
@@ -598,11 +693,15 @@ watch(() => form.value.account_type, (v) => {
                   <span class="confirmation-label">帳戶類型：</span>
                   <span class="confirmation-value">{{ selectedAccountType?.label }}</span>
                 </div>
-                <div class="confirmation-item">
+                <div v-if="!isForeignCurrencyAccount" class="confirmation-item">
                   <span class="confirmation-label">初始存款：</span>
                   <span class="confirmation-value highlight">
-                    {{ new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', minimumFractionDigits: 0 }).format(form.initial_deposit) }}
+                    {{ formatCurrencyAmount(form.initial_deposit, form.currency) }}
                   </span>
+                </div>
+                <div v-if="isForeignCurrencyAccount" class="confirmation-item">
+                  <span class="confirmation-label">帳戶特性：</span>
+                  <span class="confirmation-value">可存放多種外幣（開戶後再存入）</span>
                 </div>
               </div>
             </div>
