@@ -32,6 +32,9 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true
     try {
       const response = await authService.login(username, password)
+      if (!response.data.token_id || !response.data.token) {
+        throw new Error('登入失敗，無效的憑證')
+      }
       setTokenId(response.data.token_id)
       setToken(response.data.token)
 

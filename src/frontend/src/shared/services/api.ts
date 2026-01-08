@@ -14,9 +14,20 @@ const processQueue = (token: string) => {
 }
 class ApiClient {
   private client: AxiosInstance
+  private raw: AxiosInstance
 
   constructor() {
     this.client = axios.create({
+      baseURL: API_BASE_URL,
+      timeout: 10000,
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    // 原生 axios 實例：不掛載攔截器，專用於刷新請求，避免遞迴攔截
+    this.raw = axios.create({
       baseURL: API_BASE_URL,
       timeout: 10000,
       withCredentials: true,
@@ -34,7 +45,7 @@ class ApiClient {
       return config
     })
 
-    // 響應攔截器 - 實現自動刷新
+    // 回應攔截器
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
@@ -50,7 +61,10 @@ class ApiClient {
 
             try {
               // 嘗試刷新 token
-              const response = await this.client.post('/auth/refresh')
+              const response = await this.raw.post('/auth/refresh')
+              if (response.status !== 200) {
+                throw new Error('Failed to refresh token')
+              }
               const { token } = response.data
 
               const authStore = useAuthStore()
