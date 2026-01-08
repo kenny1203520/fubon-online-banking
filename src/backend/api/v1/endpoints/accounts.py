@@ -5,7 +5,6 @@ from typing import Optional
 import random
 import string
 import uuid
-import uuid
 
 from models.account import Account
 from models.transaction import Transaction
@@ -407,12 +406,6 @@ async def transfer(
             detail='invalid account data'
         )
     
-    if account.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail='Access denied'
-        )
-    
     # 檢查帳戶是否屬於當前用戶
     if src_account.user_id != current_user.id:
         raise HTTPException(
@@ -454,14 +447,14 @@ async def transfer(
     session.add(debit)
     session.add(credit)
     session.commit()
+    session.refresh(src_account)
+    session.refresh(dst_account)
     
-    return {
-        'items': [TransactionResponse.from_orm(t) for t in transactions],
-        'page': page,
-        'per_page': per_page,
-        'total': total,
-        'total_pages': total_pages
-    }
+    return TransferResponse(
+        message='Transfer completed successfully',
+        from_new_balance=src_account.balance,
+        to_new_balance=dst_account.balance
+    )
 
 
 @router.post('/cashless_withdraw', response_model=CashlessResponse)
