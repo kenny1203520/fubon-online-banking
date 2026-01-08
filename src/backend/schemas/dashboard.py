@@ -13,7 +13,7 @@ class DashboardSummary(BaseModel):
 
 
 class AccountSummary(BaseModel):
-    id: uuid.UUID
+    id: Optional[uuid.UUID]
     account_name: str
     account_type: str
     balance: float

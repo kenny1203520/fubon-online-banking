@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlmodel import Session, select, func, desc
+from sqlmodel import Session, select, func, desc, or_
 from datetime import datetime, timezone
-from typing import List, Dict
+from typing import List, cast
+import uuid
 
 from core.database import get_session
 from core.auth import get_current_user
@@ -12,6 +13,7 @@ from models.transaction import Transaction
 from models.credit_card import CreditCard
 from models.loan import Loan
 from models.investment import Investment
+from models.notification import Notification as NotificationModel
 
 from schemas.dashboard import (
     DashboardData, DashboardSummary, AccountSummary, RecentTransaction,
@@ -19,9 +21,6 @@ from schemas.dashboard import (
 )
 
 router = APIRouter()
-
-# 簡易的記憶體通知儲存（示範用，未持久化）
-_notifications_store: Dict[str, List[Notification]] = {}
 
 
 def _now_iso() -> str:
@@ -38,19 +37,24 @@ def _map_tx_type(t: str) -> str:
     return t
 
 
-def _ensure_user_notifications(user: User):
-    key = str(user.id)
-    if key not in _notifications_store:
-        _notifications_store[key] = [
-            Notification(
-                id=1,
-                type="info",
-                title="歡迎回來！",
-                message="您的儀表板已就緒，開始管理您的資產吧。",
-                read=False,
-                created_at=_now_iso()
-            )
-        ]
+def _ensure_user_notifications(session: Session, user: User):
+    """若使用者尚無通知，建立一則歡迎通知"""
+    if not user.id:
+        return
+    uid = cast(uuid.UUID, user.id)
+    count_stmt = select(func.count()).select_from(NotificationModel).where(NotificationModel.user_id == uid)
+    existing = session.exec(count_stmt).first() or 0
+    if existing == 0:
+        welcome = NotificationModel(
+            user_id=uid,
+            type="info",
+            title="歡迎回來！",
+            message="您的儀表板已就緒，開始管理您的資產吧。",
+            read=False,
+            created_at=_now_iso()
+        )
+        session.add(welcome)
+        session.commit()
 
 
 @router.get("/", response_model=DashboardData)
@@ -73,7 +77,12 @@ async def get_dashboard(
     ]
 
     # 最近交易（取使用者所有帳戶）
-    tx_query = select(Transaction).where(Transaction.account_id.in_(account_ids)).order_by(desc(Transaction.id)).limit(10)
+    # 避免 in_ 型別檢查問題，改用 or_
+    tx_filter = or_(*[Transaction.account_id == acc_id for acc_id in account_ids]) if account_ids else None
+    tx_query = select(Transaction)
+    if tx_filter is not None:
+        tx_query = tx_query.where(tx_filter)
+    tx_query = tx_query.order_by(desc(Transaction.id)).limit(10)
     txs = session.exec(tx_query).all()
     # 構建帳戶名稱映射
     name_map = {str(a.id): a.account_name for a in accounts if a.id}
@@ -129,9 +138,20 @@ async def get_dashboard(
         last_updated=_now_iso()
     )
 
-    # 通知
-    _ensure_user_notifications(current_user)
-    notifications = _notifications_store[str(current_user.id)]
+    # 通知（資料庫）
+    _ensure_user_notifications(session, current_user)
+    notif_stmt = select(NotificationModel).where(NotificationModel.user_id == current_user.id).order_by(desc(NotificationModel.id))
+    notif_models = session.exec(notif_stmt).all()
+    notifications = [
+        Notification(
+            id=n.id or 0,
+            type=n.type,
+            title=n.title,
+            message=n.message,
+            read=bool(n.read),
+            created_at=n.created_at
+        ) for n in notif_models
+    ]
 
     return DashboardData(
         summary=summary,
@@ -197,7 +217,11 @@ async def get_recent_transactions(
     accounts = session.exec(select(Account).where(Account.user_id == current_user.id)).all()
     account_ids = [a.id for a in accounts if a.id]
     name_map = {str(a.id): a.account_name for a in accounts if a.id}
-    tx_query = select(Transaction).where(Transaction.account_id.in_(account_ids)).order_by(desc(Transaction.id)).limit(limit)
+    tx_filter = or_(*[Transaction.account_id == acc_id for acc_id in account_ids]) if account_ids else None
+    tx_query = select(Transaction)
+    if tx_filter is not None:
+        tx_query = tx_query.where(tx_filter)
+    tx_query = tx_query.order_by(desc(Transaction.id)).limit(limit)
     txs = session.exec(tx_query).all()
     return [
         RecentTransaction(
@@ -212,31 +236,56 @@ async def get_recent_transactions(
 
 
 @router.get("/notifications", response_model=List[Notification])
-async def get_notifications(current_user: User = Depends(get_current_user)):
+async def get_notifications(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
     if not current_user or not current_user.id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication required")
-    _ensure_user_notifications(current_user)
-    return _notifications_store[str(current_user.id)]
+    _ensure_user_notifications(session, current_user)
+    stmt = select(NotificationModel).where(NotificationModel.user_id == current_user.id).order_by(desc(NotificationModel.id))
+    rows = session.exec(stmt).all()
+    return [
+        Notification(
+            id=r.id or 0,
+            type=r.type,
+            title=r.title,
+            message=r.message,
+            read=bool(r.read),
+            created_at=r.created_at
+        ) for r in rows
+    ]
 
 
 @router.put("/notifications/{notification_id}/read")
-async def mark_notification_read(notification_id: int, current_user: User = Depends(get_current_user)):
+async def mark_notification_read(
+    notification_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
     if not current_user or not current_user.id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication required")
-    _ensure_user_notifications(current_user)
-    items = _notifications_store[str(current_user.id)]
-    for n in items:
-        if n.id == notification_id:
-            n.read = True
-            break
+    notif = session.get(NotificationModel, notification_id)
+    if not notif or notif.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="notification not found")
+    notif.read = True
+    session.add(notif)
+    session.commit()
     return {"status": "ok"}
 
 
 @router.put("/notifications/read-all")
-async def mark_all_notifications_read(current_user: User = Depends(get_current_user)):
+async def mark_all_notifications_read(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
     if not current_user or not current_user.id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication required")
-    _ensure_user_notifications(current_user)
-    for n in _notifications_store[str(current_user.id)]:
+    _ensure_user_notifications(session, current_user)
+    stmt = select(NotificationModel).where(NotificationModel.user_id == current_user.id)
+    rows = session.exec(stmt).all()
+    for n in rows:
         n.read = True
+        session.add(n)
+    session.commit()
     return {"status": "ok"}
