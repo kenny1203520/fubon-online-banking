@@ -26,8 +26,8 @@ export const loanService = {
 
     // 獲取我的貸款列表
     async getMyLoans(): Promise<Loan[]> {
-        const response = await apiClient.get<Loan[]>('/loans/')
-        return response.data
+        const response = await apiClient.get<{ items: Loan[], total: number }>('/loans/')
+        return response.data.items
     },
 
     // 獲取貸款詳情
