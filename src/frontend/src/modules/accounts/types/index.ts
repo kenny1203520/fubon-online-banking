@@ -108,8 +108,8 @@ export interface TransactionFilters {
   page?: number
   per_page?: number
   type?: string
-  start_date?: string
-  end_date?: string
+  frm?: string
+  to?: string
 }
 
 // Store State

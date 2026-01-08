@@ -71,7 +71,7 @@ const changePage = async (page: number) => {
 }
 
 // 查看帳戶詳情
-const viewAccountDetail = (accountId: number) => {
+const viewAccountDetail = (accountId: string) => {
   router.push(`/accounts/${accountId}`)
 }
 
@@ -81,7 +81,7 @@ const goToOpenAccount = () => {
 }
 
 // 刷新餘額
-const refreshBalance = async (accountId: number) => {
+const refreshBalance = async (accountId: string) => {
   try {
     await accountStore.getBalance(accountId)
   } catch (err) {
@@ -152,7 +152,7 @@ onMounted(() => {
           <div class="account-header">
             <div class="account-info">
               <h3 class="account-name">{{ account.full_name }}</h3>
-              <span class="account-id">帳戶 #{{ account.id }}</span>
+              <span class="account-id">帳戶 {{ account.account_number }}</span>
             </div>
             <span :class="['account-status', getStatusClass(account.status)]">
               {{ getStatusText(account.status) }}

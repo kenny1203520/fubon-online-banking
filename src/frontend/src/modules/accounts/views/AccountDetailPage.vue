@@ -20,9 +20,8 @@ const activeTab = ref<'info' | 'transactions'>('info')
 const transactionFilters = ref({
   page: 1,
   per_page: 10,
-  type: '',
-  start_date: '',
-  end_date: ''
+  frm: '',
+  to: ''
 })
 
 // 格式化金額
@@ -192,7 +191,7 @@ onMounted(() => {
           <div class="card-header">
             <div>
               <h2 class="account-name">{{ accountStore.currentAccount.full_name }}</h2>
-              <span class="account-id">帳戶 #{{ accountStore.currentAccount.id }}</span>
+              <span class="account-id">帳戶 {{ accountStore.currentAccount.account_number }}</span>
             </div>
             <span :class="['account-status', getStatusClass(accountStore.currentAccount.status)]">
               {{ getStatusText(accountStore.currentAccount.status) }}
