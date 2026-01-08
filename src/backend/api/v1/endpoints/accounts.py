@@ -14,7 +14,7 @@ from schemas.account import (
     AccountCreateRequest, AccountResponse, AccountListResponse, BalanceResponse,
     CashlessRequest, CashlessResponse, AccountCreateResponse
 )
-from schemas.transaction import TransactionList, TransactionResponse, TransferRequest, TransferResponse
+from schemas.transaction import TransactionList, TransactionResponse
 from core.database import get_session
 from core.auth import get_current_user
 
@@ -280,7 +280,9 @@ async def get_balance(
 async def get_transactions(
     account_id: str,
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100),
+    per_page: str,  # 改為 string 以支援 UUID
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100) = Query(10, ge=1, le=100),
     frm: Optional[str] = None,
     to: Optional[str] = None,
     current_user: User = Depends(get_current_user),
@@ -336,11 +338,10 @@ async def get_transactions(
     transactions = session.exec(query).all()
     
     total_pages = (total + per_page - 1) // per_page if per_page else 0
-
+    
     return {
         'items': [TransactionResponse(
-            id=0 if t.id is None else t.id,
-            transaction_number=t.transaction_number,
+            id=t.id,
             account_id=t.account_id,
             account_number=t.account_number,
             type=t.type,
@@ -348,10 +349,9 @@ async def get_transactions(
             currency=t.currency,
             related_account_id=t.related_account_id,
             related_account_number=t.related_account_number,
-            status=t.status,
             description=t.description,
             created_at=t.created_at
-        ) for t in transactions],
+            ) for t in transactions],
         'page': page,
         'per_page': per_page,
         'total': total,
@@ -383,12 +383,6 @@ async def transfer(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='invalid user information'
         )
-    
-    if not request.from_account_number or not request.to_account_number:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Both from_account_number and to_account_number are required'
-        )
 
     # 檢查轉帳金額是否正確
     if request.amount <= 0:
@@ -414,7 +408,7 @@ async def transfer(
             detail='invalid account data'
         )
     
-    if src_account.user_id != current_user.id:
+    if account.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail='Access denied'
@@ -462,20 +456,13 @@ async def transfer(
     session.add(credit)
     session.commit()
     
-    return TransactionResponse(
-        id=debit.id if debit.id else 0,
-        transaction_number=debit.transaction_number,
-        account_id=debit.account_id,
-        account_number=debit.account_number,
-        type=debit.type,
-        amount=debit.amount,
-        currency=debit.currency,
-        related_account_id=debit.related_account_id,
-        related_account_number=debit.related_account_number,
-        status=debit.status,
-        description=debit.description,
-        created_at=debit.created_at
-    )
+    return {
+        'items': [TransactionResponse.from_orm(t) for t in transactions],
+        'page': page,
+        'per_page': per_page,
+        'total': total,
+        'total_pages': total_pages
+    }
 
 
 @router.post('/cashless_withdraw', response_model=CashlessResponse)
@@ -490,25 +477,16 @@ async def cashless_withdraw(
     - account_id: ID of the account (帳戶ID)
     - enabled: True to enable, False to disable (啟用為True，停用為False)
     """
-    # 驗證用戶身份
-    if not current_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='authentication required to set cashless withdrawal'
-        )
-    if not current_user.id:
+    # Convert string UUID to UUID object
+    try:
+        account_uuid = uuid.UUID(request.account_id)
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail='invalid user information'
+            detail='invalid account ID format'
         )
     
-    if not request.account_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='account_id is required'
-        )
-
-    account = session.get(Account, request.account_id) # 取得帳戶資料
+    account = session.get(Account, account_uuid)
     
     if not account:
         raise HTTPException(

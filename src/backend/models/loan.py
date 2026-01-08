@@ -1,9 +1,10 @@
 from sqlmodel import Field, SQLModel
 from typing import Optional
+import uuid
 
 class Loan(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int
+    user_id: uuid.UUID
     product_id: Optional[int] = None
     product_name: Optional[str] = None
     loan_type: str = Field(default="personal")  # personal, mortgage, auto, business
