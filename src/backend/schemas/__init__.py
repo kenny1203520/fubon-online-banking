@@ -1,4 +1,4 @@
-from .account import AccountCreateRequest, AccountCreateResponse, AccountResponse, AccountListResponse, BalanceRequest, BalanceResponse, CashlessRequest, CashlessResponse
+from .account import AccountCreateRequest, AccountCreateResponse, AccountResponse, AccountListResponse, BalanceResponse, CashlessRequest, CashlessResponse
 from .transaction import TransactionResponse, TransactionList, TransactionQuery
 from .credit_card import (
     TransferRequest, TransferResponse, CreditCardCreate, CreditCardApplicationResponse,
@@ -14,7 +14,6 @@ __all__ = [
     "AccountCreateResponse",
     "AccountResponse",
     "AccountListResponse",
-    "BalanceRequest",
     "BalanceResponse",
     "CashlessRequest",
     "CashlessResponse",

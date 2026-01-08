@@ -15,6 +15,7 @@ from schemas.account import (
     CashlessRequest, CashlessResponse, AccountCreateResponse
 )
 from schemas.transaction import TransactionList, TransactionResponse
+from schemas.credit_card import TransferRequest, TransferResponse
 from core.database import get_session
 from core.auth import get_current_user
 
@@ -280,9 +281,7 @@ async def get_balance(
 async def get_transactions(
     account_id: str,
     page: int = Query(1, ge=1),
-    per_page: str,  # 改為 string 以支援 UUID
-    page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100) = Query(10, ge=1, le=100),
+    per_page: int = Query(10, ge=1, le=100),
     frm: Optional[str] = None,
     to: Optional[str] = None,
     current_user: User = Depends(get_current_user),
