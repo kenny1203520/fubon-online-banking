@@ -32,7 +32,7 @@ class AccountCreateRequest(BaseModel):
     @classmethod
     def validate_account_type(cls, v: str) -> str:
         """驗證帳戶類型"""
-        allowed_types = ['savings', 'checking', 'fixed_deposit', 'foreign_currency']
+        allowed_types = ['savings', 'checking', 'fixed_deposit', 'foreign_currency', 'investment']
         if v not in allowed_types:
             raise ValueError(f'帳戶類型必須為：{", ".join(allowed_types)}')
         return v

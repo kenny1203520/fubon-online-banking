@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAccountStore } from '@/modules/accounts/stores/account'
 import Alert from '@/shared/Alert.vue'
@@ -12,7 +12,8 @@ const accountTypes = [
   { value: 'savings', label: '儲蓄帳戶', description: '適合日常存款，享有利息收益' },
   { value: 'checking', label: '支票帳戶', description: '適合頻繁交易，可開立支票' },
   { value: 'fixed_deposit', label: '定期存款帳戶', description: '高利率，適合長期儲蓄' },
-  { value: 'foreign_currency', label: '外幣帳戶', description: '支持多種外幣存款，便於國際交易' }
+  { value: 'foreign_currency', label: '外幣帳戶', description: '支持多種外幣存款，便於國際交易' },
+  { value: 'investment', label: '投資帳戶', description: '連結投資商品，支援買賣與績效查詢' }
 ]
 
 // 表單資料
@@ -22,7 +23,7 @@ const form = ref({
   email: '',
   phone: '',
   address: '',
-  account_type: 'savings' as 'savings' | 'checking' | 'fixed_deposit' | 'foreign_currency',
+  account_type: 'savings' as 'savings' | 'checking' | 'fixed_deposit' | 'foreign_currency' | 'investment',
   initial_deposit: 1000
 })
 
@@ -57,7 +58,7 @@ const validatePhone = (phone: string): boolean => {
 // 即時驗證單個欄位
 const validateField = (fieldName: string) => {
   delete fieldErrors.value[fieldName]
-  
+
   switch (fieldName) {
     case 'full_name':
       if (!form.value.full_name) {
@@ -98,7 +99,7 @@ const validateField = (fieldName: string) => {
 // 表單驗證
 const validateForm = (): boolean => {
   fieldErrors.value = {}
-  
+
   validateField('full_name')
   validateField('id_number')
   validateField('email')
@@ -184,7 +185,7 @@ const handleSubmit = async () => {
       accountNumber: result.account_number,
       accountName: result.account_name
     }
-    
+
     // 清空表單
     form.value = {
       full_name: '',
@@ -204,7 +205,7 @@ const handleSubmit = async () => {
     }, 3000)
   } catch (err: any) {
     console.error('開戶錯誤詳情:', err)
-    
+
     // 詳細錯誤處理
     if (err.response) {
       // 服務器返回錯誤
@@ -251,6 +252,15 @@ const formatPhoneInput = () => {
 // 獲取當前選擇的帳戶類型資訊
 const selectedAccountType = computed(() => {
   return accountTypes.find(type => type.value === form.value.account_type)
+})
+
+// Debug watchers: 幫助檢查同意勾選與帳戶類型在切換步驟時是否被正確維持
+watch(() => agreedToTerms.value, (v) => {
+  console.debug('[OpenAccount] agreedToTerms ->', v)
+})
+
+watch(() => form.value.account_type, (v) => {
+  console.debug('[OpenAccount] account_type ->', v)
 })
 </script>
 
@@ -336,7 +346,7 @@ const selectedAccountType = computed(() => {
           <!-- 步驟 1: 基本資料 -->
           <div v-show="currentStep === 1" class="form-step">
             <h2 class="step-title">基本資料</h2>
-            
+
             <!-- 姓名 -->
             <div class="form-group" :class="{ error: fieldErrors.full_name }">
               <label for="full_name" class="form-label">
