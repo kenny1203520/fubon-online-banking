@@ -14,7 +14,7 @@ export type {
   BalanceResponse,
   CashlessRequest,
   CashlessResponse,
-  OpenAccountResponse,
+  AccountCreateResponse,
   Transaction,
   TransactionResponse,
   TransactionList,

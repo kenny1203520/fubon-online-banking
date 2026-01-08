@@ -1,6 +1,6 @@
 // Account Types
 export interface Account {
-  id: number
+  id: string
   account_number: string
   account_name: string
   full_name: string
@@ -26,7 +26,7 @@ export interface AccountCreate {
 }
 
 export interface AccountResponse {
-  id: number
+  id: string
   account_number: string
   account_name: string
   full_name: string
@@ -50,27 +50,27 @@ export interface AccountList {
 }
 
 export interface BalanceRequest {
-  account_id: number
+  account_id: string
 }
 
 export interface BalanceResponse {
-  account_id: number
+  account_id: string
   balance: number
   cashless_enabled: boolean
 }
 
 export interface CashlessRequest {
-  account_id: number
+  account_id: string
   enabled: boolean
 }
 
 export interface CashlessResponse {
-  account_id: number
+  account_id: string
   cashless_enabled: boolean
 }
 
-export interface OpenAccountResponse {
-  account_id: number
+export interface AccountCreateResponse {
+  account_id: string
   account_number: string
   account_name: string
   status: string
@@ -80,7 +80,7 @@ export interface OpenAccountResponse {
 // Transaction Types (related to accounts)
 export interface Transaction {
   id: number
-  account_id: number
+  account_id: string
   type: 'deposit' | 'withdrawal' | 'transfer'
   amount: number
   description?: string
@@ -89,7 +89,7 @@ export interface Transaction {
 
 export interface TransactionResponse {
   id: number
-  account_id: number
+  account_id: string
   type: 'deposit' | 'withdrawal' | 'transfer'
   amount: number
   description?: string

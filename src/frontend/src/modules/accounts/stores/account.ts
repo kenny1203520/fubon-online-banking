@@ -67,7 +67,7 @@ export const useAccountStore = defineStore('account', () => {
     error.value = null
 
     try {
-      const response = await accountService.openAccount(data)
+      const response = await accountService.createAccount(data)
       // 開戶成功後重新取得帳戶列表
       await fetchAccounts(currentPage.value, perPage.value)
       return response.data
