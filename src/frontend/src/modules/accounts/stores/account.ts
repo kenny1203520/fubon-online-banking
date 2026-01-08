@@ -97,6 +97,11 @@ export const useAccountStore = defineStore('account', () => {
     }
   }
 
+  // createAccount 別名（用於兼容不同命名）
+  const createAccount = async (data: AccountCreate) => {
+    return openAccount(data)
+  }
+
   const getBalance = async (accountId: string) => {
     try {
       const response = await accountService.getBalance(accountId)
@@ -240,6 +245,7 @@ export const useAccountStore = defineStore('account', () => {
     fetchAccounts,
     fetchAccountById,
     openAccount,
+    createAccount,
     getBalance,
     setCashless,
     fetchTransactions,

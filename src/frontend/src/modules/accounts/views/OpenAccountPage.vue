@@ -243,49 +243,21 @@ const handleSubmit = async () => {
     return
   }
 
-  // 檢查驗證結果
-  if (form.value.initial_deposit < 1000 && !isForeignCurrencyAccount.value) {
-    error.value = '初始存款金額至少需要 1,000 元'
-    return false
-  }
+  isLoading.value = true
 
-  if (form.value.initial_deposit > 10000000) {
-    error.value = '初始存款金額不可超過 10,000,000 元'
-    return false
-  }
+  try {
+    const result = await accountStore.createAccount({
+      full_name: form.value.full_name,
+      id_number: form.value.id_number,
+      email: form.value.email,
+      phone: form.value.phone,
+      address: form.value.address,
+      account_type: form.value.account_type,
+      currency: form.value.currency,
+      initial_deposit: form.value.initial_deposit
+    })
 
-  if (!agreedToTerms.value) {
-    error.value = '請同意服務條款及隱私權政策'
-    return false
-  }
-
-  return Object.keys(fieldErrors.value).length === 0
-}
-
-// 驗證所有欄位（對外幣帳戶的初始存款不做驗證）
-const validateForm = (): boolean => {
-  fieldErrors.value = {}
-
-  validateField('full_name')
-  validateField('id_number')
-  validateField('email')
-  validateField('phone')
-  validateField('address')
-
-  // 非外幣帳戶需要驗證初始存款
-  if (!isForeignCurrencyAccount.value) {
-    if (form.value.initial_deposit < 1000) {
-      error.value = '初始存款金額至少需要 1,000 元'
-      return false
-    }
-
-    if (form.value.initial_deposit > 10000000) {
-      error.value = '初始存款金額不可超過 10,000,000 元'
-      return false
-    }
-  }
-
-    success.value = result.message
+    success.value = '開戶申請已成功提交'
     successDetails.value = {
       accountNumber: result.account_number,
       accountName: result.account_name
@@ -354,20 +326,6 @@ const formatPhoneInput = () => {
   // 只保留數字
   form.value.phone = form.value.phone.replace(/\D/g, '')
 }
-
-// 獲取當前選擇的帳戶類型資訊
-const selectedAccountType = computed(() => {
-  return accountTypes.find(type => type.value === form.value.account_type)
-})
-
-// Debug watchers: 幫助檢查同意勾選與帳戶類型在切換步驟時是否被正確維持
-watch(() => agreedToTerms.value, (v) => {
-  console.debug('[OpenAccount] agreedToTerms ->', v)
-})
-
-watch(() => form.value.account_type, (v) => {
-  console.debug('[OpenAccount] account_type ->', v)
-})
 </script>
 
 <template>
