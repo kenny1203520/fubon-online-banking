@@ -7,7 +7,7 @@ dist/
 
 # database data
 *.db
-src/backend/data/
+src/backend/data/*
 !src/backend/data/investment_products.py
 !src/backend/data/print_products.py
 !src/backend/data/seed.py
