@@ -1,4 +1,16 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import { useDashboardStore } from '@/modules/dashboard'
+
+const store = useDashboardStore()
+
+onMounted(async () => {
+  try {
+    await store.fetchDashboardData()
+  } catch (e) {
+    // 已在 store 設定 error
+  }
+})
 </script>
 
 <template>
@@ -12,18 +24,21 @@
       <!-- 快速統計 -->
       <div class="card quick-stats">
         <h2>帳戶概覽</h2>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <div class="stat-value">$1,234,567</div>
-            <div class="stat-label">總資產</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">3</div>
-            <div class="stat-label">帳戶數</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">$50,000</div>
-            <div class="stat-label">投資淨值</div>
+        <div v-if="store.isLoading">載入中...</div>
+        <div v-else>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-value">{{ (store.summary?.total_assets || 0).toLocaleString('en-US', { style: 'currency', currency: 'TWD' }) }}</div>
+              <div class="stat-label">總資產</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">{{ store.summary?.accounts_count || 0 }}</div>
+              <div class="stat-label">帳戶數</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">{{ (store.summary?.net_worth || 0).toLocaleString('en-US', { style: 'currency', currency: 'TWD' }) }}</div>
+              <div class="stat-label">淨值</div>
+            </div>
           </div>
         </div>
       </div>
@@ -31,7 +46,25 @@
       <!-- 最近交易 -->
       <div class="card recent-transactions">
         <h2>最近交易</h2>
-        <div class="placeholder">最近交易列表 - 開發中</div>
+        <div v-if="store.isLoading" class="placeholder">載入中...</div>
+        <div v-else-if="(store.recentTransactions || []).length === 0" class="placeholder">目前沒有交易紀錄</div>
+        <div v-else class="tx-list">
+          <div v-for="tx in store.recentTransactions" :key="tx.id" class="tx-item">
+            <div class="tx-main">
+              <div class="tx-title">
+                <span class="tx-type" :data-type="tx.type">{{ tx.type }}</span>
+                <span class="tx-desc">{{ tx.description || '—' }}</span>
+              </div>
+              <div class="tx-meta">
+                <span class="tx-account">{{ tx.account_name }}</span>
+                <span class="tx-date">{{ tx.date }}</span>
+              </div>
+            </div>
+            <div class="tx-amount" :class="{ neg: tx.amount < 0 }">
+              {{ tx.amount.toLocaleString('en-US', { style: 'currency', currency: 'TWD' }) }}
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 快速功能 -->
@@ -134,6 +167,47 @@
   background: #f9f9f9;
   border-radius: 6px;
 }
+
+.tx-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tx-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #fafafa;
+  border-radius: 6px;
+  border: 1px solid #eee;
+}
+
+.tx-title {
+  display: flex;
+  gap: 8px;
+  font-weight: 600;
+  color: #333;
+}
+
+.tx-type[data-type="transfer"] { color: #5c6ac4; }
+.tx-type[data-type="deposit"] { color: #2e7d32; }
+.tx-type[data-type="withdrawal"] { color: #c62828; }
+
+.tx-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #777;
+  display: flex;
+  gap: 10px;
+}
+
+.tx-amount {
+  font-weight: 700;
+  color: #2e7d32;
+}
+.tx-amount.neg { color: #c62828; }
 
 .action-buttons {
   display: grid;

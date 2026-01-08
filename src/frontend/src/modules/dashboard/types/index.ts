@@ -8,7 +8,7 @@ export interface DashboardSummary {
 }
 
 export interface AccountSummary {
-  id: number
+  id: string
   account_name: string
   account_type: string
   balance: number

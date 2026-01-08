@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from fastapi.security import HTTPBearer
-from api.v1.endpoints import auth, accounts, creditcards, investments, loans, utilities, transactions
+from api.v1.endpoints import auth, accounts, creditcards, investments, loans, utilities, transactions, dashboard
 
 # HTTPBearer security scheme
 security = HTTPBearer(description="Bearer token from /api/v1/auth/login")
@@ -60,5 +60,13 @@ api_router.include_router(
     utilities.router, 
     prefix="/utilities", 
     tags=["生活繳費"],
+    dependencies=[Depends(security)]
+)
+
+# Dashboard routes (儀表板)
+api_router.include_router(
+    dashboard.router,
+    prefix="/dashboard",
+    tags=["儀表板"],
     dependencies=[Depends(security)]
 )
