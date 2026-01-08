@@ -23,7 +23,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
     swagger_ui_parameters={
-        "persistAuthorization": True, # 保留認證信息
+        "persistAuthorization": True, # 保留認證資訊
         "syntaxHighlight": {
             "activate": True,
             "theme": "monokai"
@@ -48,7 +48,7 @@ app.include_router(api_router, prefix="/api/v1")
 async def root():
     return RedirectResponse(url="/docs")
 
-@app.get("/health", status_code=status.HTTP_200_OK)
+@app.get("/health", status_code=status.HTTP_200_OK, tags=["系統"])
 async def health():
     return {"status": "healthy"}
 
