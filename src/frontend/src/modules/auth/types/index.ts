@@ -14,8 +14,12 @@ export interface RegisterRequest {
   username: string
   password: string
   email?: string
+<<<<<<< HEAD
   admin_code?: string
   role?: UserRole
+=======
+  phone?: string
+>>>>>>> d9ef812b699fa053b3951827ff5672c5cb5c8702
 }
 
 export interface RegisterResponse {
@@ -38,6 +42,7 @@ export interface User {
   user_id: string
   username: string
   email?: string
+  phone?: string
   role?: UserRole
 }
 

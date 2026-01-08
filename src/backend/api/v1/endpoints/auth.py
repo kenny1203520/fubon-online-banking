@@ -155,6 +155,8 @@ async def register(request: UserRegisterRequest, session: Session = Depends(get_
             username=request.username,
             password_hash=password_hash,
             email=request.email,
+            phone=request.phone,
+            is_admin=is_admin,
             role=role,
             created_at=datetime.now(timezone.utc).isoformat()
         ) # 建立新使用者
@@ -305,5 +307,7 @@ async def me(request: Request, session: Session = Depends(get_session), user: Us
         user_id=user.id,
         username=user.username,
         email=user.email,
-        role=user.role
+        phone=user.phone,
+        role=user.role,
+        is_admin=user.is_admin
     )

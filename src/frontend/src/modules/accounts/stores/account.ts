@@ -72,8 +72,25 @@ export const useAccountStore = defineStore('account', () => {
       await fetchAccounts(currentPage.value, perPage.value)
       return response.data
     } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { detail?: string } } }
-      error.value = errorObj.response?.data?.detail || '開戶申請失敗'
+      const errorObj = err as { response?: { data?: { detail?: any } }; request?: any }
+      const detail = errorObj.response?.data?.detail
+
+      if (typeof detail === 'string') {
+        error.value = detail
+      } else if (Array.isArray(detail)) {
+        error.value = detail.map((e: any) => (e.msg ? `${e.loc?.join('.')}: ${e.msg}` : JSON.stringify(e))).join(', ')
+      } else if (detail && typeof detail === 'object') {
+        try {
+          error.value = JSON.stringify(detail)
+        } catch (e) {
+          error.value = String(detail)
+        }
+      } else if (errorObj.request) {
+        error.value = '無法連接到服務器，請檢查網路連線'
+      } else {
+        error.value = '開戶申請失敗'
+      }
+
       throw new Error(error.value)
     } finally {
       isLoading.value = false

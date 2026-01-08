@@ -16,6 +16,7 @@ class UserRegisterRequest(BaseModel):
     username: str
     password: str
     email: Optional[str] = None
+    phone: Optional[str] = None
     admin_code: Optional[str] = None
     role: Optional[str] = "user"
 

@@ -11,6 +11,7 @@ const username = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const email = ref('')
+const phone = ref('')
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
@@ -43,6 +44,10 @@ const validateForm = (): boolean => {
     error.value = '請輸入有效的電子郵件地址'
     return false
   }
+  if (phone.value && !/^09\d{8}$/.test(phone.value)) {
+    error.value = '請輸入有效的手機號碼（09開頭的10碼數字）'
+    return false
+  }
   if (!agreedToTerms.value) {
     error.value = '請同意服務條款及隱私權政策'
     return false
@@ -61,7 +66,7 @@ const handleRegister = async () => {
   isLoading.value = true
 
   try {
-    await authStore.register(username.value, password.value, email.value || undefined)
+    await authStore.register(username.value, password.value, email.value || undefined, phone.value || undefined)
     success.value = '註冊成功！即將跳轉至登入頁面...'
     
     setTimeout(() => {
@@ -128,6 +133,21 @@ const handleBackToLogin = () => {
             v-model="email"
             type="email"
             placeholder="請輸入電子郵件"
+            class="form-input"
+            :disabled="isLoading"
+          />
+        </div>
+
+        <!-- 手機號碼輸入 -->
+        <div class="form-group">
+          <label for="phone" class="form-label">
+            手機號碼 <span class="optional">(選填)</span>
+          </label>
+          <input
+            id="phone"
+            v-model="phone"
+            type="tel"
+            placeholder="請輸入手機號碼（09開頭的10碼數字）"
             class="form-input"
             :disabled="isLoading"
           />
