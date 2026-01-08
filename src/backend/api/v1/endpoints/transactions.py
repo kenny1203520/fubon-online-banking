@@ -79,10 +79,11 @@ def validate_daily_transfer_limit(session: Session, account_id: uuid.UUID, amoun
     return True
 
 @router.get("/", response_model=TransactionList)
+@router.post("/", response_model=TransactionList)
 async def get_transactions(
+    account_id: Optional[str] = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=100),
-    account_id: Optional[str] = None,  # 改為 string 以支援 UUID
     frm: Optional[str] = None,
     to: Optional[str] = None,
     current_user: User = Depends(get_current_user),
@@ -98,6 +99,28 @@ async def get_transactions(
     - frm: 起始日期 (start date in ISO format)
     - to: 截止日期 (end date in ISO format)
     """
+    # 驗證使用者身份
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="authentication required to get account details"
+        )
+    
+    if not current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="invalid user information"
+        )
+    
+    # 轉換字串 UUID 為 UUID 物件
+    try:
+        account_uuid = uuid.UUID(account_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='invalid account ID format'
+        )
+    
     offset = (page - 1) * per_page
     
     # 構建查詢
@@ -111,7 +134,7 @@ async def get_transactions(
             query = query.where(
                 or_(
                     Transaction.account_id == account_uuid,
-                    Transaction.related_account == account_uuid
+                    Transaction.related_account_id == account_uuid
                 )
             )
         except ValueError:
@@ -133,7 +156,7 @@ async def get_transactions(
         count_query = count_query.where(
             or_(
                 Transaction.account_id == account_uuid,
-                Transaction.related_account == account_uuid
+                Transaction.related_account_id == account_uuid
             )
         )
     total = session.scalar(count_query) or 0

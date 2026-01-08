@@ -84,6 +84,9 @@ class BalanceResponse(BaseModel):
     balance: float
     cashless_enabled: bool
 
+class BalanceRequest(BaseModel):
+    account_id: uuid.UUID
+
 class CashlessRequest(BaseModel):
     account_id: uuid.UUID
     enabled: bool
