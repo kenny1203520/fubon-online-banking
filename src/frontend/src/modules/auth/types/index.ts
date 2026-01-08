@@ -13,13 +13,9 @@ export interface LoginResponse {
 export interface RegisterRequest {
   username: string
   password: string
-  email?: string
-<<<<<<< HEAD
-  admin_code?: string
-  role?: UserRole
-=======
-  phone?: string
->>>>>>> d9ef812b699fa053b3951827ff5672c5cb5c8702
+  email: string
+  admin_code: string
+  role: UserRole
 }
 
 export interface RegisterResponse {
