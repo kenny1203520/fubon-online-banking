@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional
 import random
 import string
+import uuid
 
 from models.account import Account
 from models.transaction import Transaction
@@ -13,7 +14,6 @@ from schemas.account import (
     CashlessRequest, CashlessResponse, AccountCreateResponse
 )
 from schemas.transaction import TransactionList, TransactionResponse
-from schemas.credit_card import TransferRequest, TransferResponse
 from core.database import get_session
 from core.auth import get_current_user
 
@@ -185,7 +185,9 @@ async def get_balance(
 
 @router.post('/transactions', response_model=TransactionList)
 async def get_transactions(
-    account_id: int,
+    account_id: str,  # 改為 string 以支援 UUID
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
     frm: Optional[str] = None,
     to: Optional[str] = None,
     current_user: User = Depends(get_current_user),
@@ -194,93 +196,60 @@ async def get_transactions(
     """
     Get account transactions with optional date range (查詢帳戶交易紀錄，可選擇日期範圍)  
     Parameters:
-    - account_id: ID of the account (帳戶ID)
+    - account_id: UUID of the account (帳戶UUID)
+    - page: Page number (頁碼)
+    - per_page: Items per page (每頁數量)
     - frm: Start date (inclusive) in ISO format (起始日期，包含)
+    - to: End date (inclusive) in ISO format (結束日期，包含)
     """
-    query = select(Transaction).where(Transaction.account_id == account_id)
+    try:
+        account_uuid = uuid.UUID(account_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Invalid account ID format'
+        )
+    
+    # 驗證帳戶存在且屬於當前用戶
+    account = session.get(Account, account_uuid)
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='Account not found'
+        )
+    
+    if account.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Access denied'
+        )
+    
+    offset = (page - 1) * per_page
+    query = select(Transaction).where(Transaction.account_id == account_uuid)
     
     if frm:
         query = query.where(Transaction.created_at >= frm)
     if to:
         query = query.where(Transaction.created_at <= to)
     
-    query = query.order_by(Transaction.id.desc()).limit(100)
+    # 計算總數
+    total = session.scalar(
+        select(func.count()).select_from(Transaction).where(Transaction.account_id == account_uuid)
+    ) or 0
+    
+    query = query.order_by(desc(Transaction.id)).offset(offset).limit(per_page)
     transactions = session.exec(query).all()
     
+    total_pages = (total + per_page - 1) // per_page if per_page else 0
+    
     return {
-        'items': [TransactionResponse.from_orm(t) for t in transactions]
+        'items': [TransactionResponse.from_orm(t) for t in transactions],
+        'page': page,
+        'per_page': per_page,
+        'total': total,
+        'total_pages': total_pages
     }
 
-@router.post('/transfer', response_model=TransferResponse)
-async def transfer(
-    request: TransferRequest,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
-):
-    """
-    Transfer money between accounts (帳戶間轉帳)  
-    Parameters:
-    - from_account: Source account ID (來源帳戶ID)
-    - to_account: Destination account ID (目標帳戶ID)
-    """
-    if request.amount <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='amount must be positive'
-        )
-    
-    # Get accounts
-    src_account = session.get(Account, request.from_account)
-    dst_account = session.get(Account, request.to_account)
-    
-    if not src_account or not dst_account:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail='source or destination account not found'
-        )
-    
-    if src_account.balance < request.amount:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='insufficient funds'
-        )
-    
-    # Perform transfer
-    src_account.balance -= request.amount
-    dst_account.balance += request.amount
-    
-    now = datetime.now(timezone.utc).isoformat()
-    
-    # Record transactions
-    debit = Transaction(
-        account_id=request.from_account,
-        type='debit',
-        amount=-request.amount,
-        currency=request.currency,
-        related_account=request.to_account,
-        description='transfer out',
-        created_at=now
-    )
-    
-    credit = Transaction(
-        account_id=request.to_account,
-        type='credit',
-        amount=request.amount,
-        currency=request.currency,
-        related_account=request.from_account,
-        description='transfer in',
-        created_at=now
-    )
-    
-    session.add(debit)
-    session.add(credit)
-    session.commit()
-    
-    return {
-        'message': 'transfer completed',
-        'from_new_balance': src_account.balance,
-        'to_new_balance': dst_account.balance
-    }
 
 @router.post('/cashless_withdraw', response_model=CashlessResponse)
 async def cashless_withdraw(

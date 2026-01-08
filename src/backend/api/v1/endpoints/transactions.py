@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Query
-from sqlmodel import Session, select, func, desc
+from sqlmodel import Session, select, func, desc, or_
 from datetime import datetime, timezone
 from typing import Optional
 import uuid
+import random
+import string
 
 from models.transaction import Transaction
 from models.account import Account
@@ -26,11 +28,61 @@ EXCHANGE_RATES = {
     ("EUR", "TWD"): 34.5,
 }
 
+# 轉帳限額設定
+TRANSFER_LIMITS = {
+    "single_max": 1000000,  # 單筆最高100萬
+    "daily_max": 3000000,   # 單日最高300萬
+    "min_amount": 1,        # 最低金額1元
+}
+
+# 手續費設定
+FEE_STRUCTURE = {
+    "same_bank": 0,         # 本行轉帳免手續費
+    "other_bank": 15,       # 跨行轉帳手續費15元
+    "over_threshold": 10,   # 大額轉帳優惠手續費10元
+    "threshold": 50000,     # 大額轉帳門檻5萬元
+}
+
+def generate_transaction_number() -> str:
+    """生成唯一的交易流水號 (格式: TXN-YYYYMMDD-XXXXXXXX)"""
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+    return f"TXN-{date_str}-{random_str}"
+
+def calculate_transfer_fee(amount: float, is_same_bank: bool = True) -> float:
+    """計算轉帳手續費"""
+    if is_same_bank:
+        return FEE_STRUCTURE["same_bank"]
+    
+    if amount >= FEE_STRUCTURE["threshold"]:
+        return FEE_STRUCTURE["over_threshold"]
+    
+    return FEE_STRUCTURE["other_bank"]
+
+def validate_daily_transfer_limit(session: Session, account_id: uuid.UUID, amount: float) -> bool:
+    """驗證單日轉帳限額"""
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    
+    # 查詢今日所有轉出交易
+    statement = select(func.sum(Transaction.amount)).where(
+        Transaction.account_id == account_id,
+        Transaction.type == "transfer_out",
+        Transaction.created_at >= today_start,
+        Transaction.status == "completed"
+    )
+    today_total = session.exec(statement).first() or 0
+    
+    # 檢查是否超過單日限額
+    if abs(today_total) + amount > TRANSFER_LIMITS["daily_max"]:
+        return False
+    
+    return True
+
 @router.get("/", response_model=TransactionList)
 async def get_transactions(
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1),
-    account_id: Optional[int] = None,
+    per_page: int = Query(10, ge=1, le=100),
+    account_id: Optional[str] = None,  # 改為 string 以支援 UUID
     frm: Optional[str] = None,
     to: Optional[str] = None,
     current_user: User = Depends(get_current_user),
@@ -41,8 +93,8 @@ async def get_transactions(
     
     Parameters:
     - page: 頁碼 (page number)
-    - per_page: 每頁項目數 (items per page)
-    - account_id: 帳戶ID (account ID, optional)
+    - per_page: 每頁項目數 (items per page, max 100)
+    - account_id: 帳戶ID (account UUID, optional)
     - frm: 起始日期 (start date in ISO format)
     - to: 截止日期 (end date in ISO format)
     """
@@ -53,7 +105,20 @@ async def get_transactions(
     
     # 如果指定帳戶ID，查詢該帳戶的交易
     if account_id:
-        query = query.where(Transaction.account_id == account_id)
+        try:
+            account_uuid = uuid.UUID(account_id)
+            # 查詢該帳戶的交易（包含轉出和轉入）
+            query = query.where(
+                or_(
+                    Transaction.account_id == account_uuid,
+                    Transaction.related_account == account_uuid
+                )
+            )
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid account ID format"
+            )
     
     # 日期範圍篩選
     if frm:
@@ -62,11 +127,16 @@ async def get_transactions(
         query = query.where(Transaction.created_at <= to)
     
     # 計算總數
-    total = session.scalar(
-        select(func.count()).select_from(Transaction).where(
-            (Transaction.account_id == account_id) if account_id else True
+    count_query = select(func.count()).select_from(Transaction)
+    if account_id:
+        account_uuid = uuid.UUID(account_id)
+        count_query = count_query.where(
+            or_(
+                Transaction.account_id == account_uuid,
+                Transaction.related_account == account_uuid
+            )
         )
-    ) or 0
+    total = session.scalar(count_query) or 0
     
     # 分頁排序
     query = query.order_by(desc(Transaction.id)).offset(offset).limit(per_page)
@@ -92,84 +162,201 @@ async def transfer(
     轉帳交易 (Transfer money between accounts)
     
     Parameters:
-    - from_account: 來源帳戶ID (source account ID)
-    - to_account: 目標帳戶ID (destination account ID)
+    - from_account: 來源帳戶ID (source account UUID, 擇一)
+    - from_account_number: 來源帳號 (source account number, 擇一)
+    - to_account: 目標帳戶ID (destination account UUID, 擇一)
+    - to_account_number: 目標帳號 (destination account number, 擇一)
     - amount: 轉帳金額 (transfer amount)
     - description: 備註 (description, optional)
+    - password: 交易密碼 (transaction password, optional)
+    
+    Features:
+    - 支援帳號或帳戶ID轉帳
+    - 自動計算手續費
+    - 驗證單日轉帳限額
+    - 驗證帳戶狀態和餘額
+    - 產生交易流水號
     """
-    # 驗證金額
-    if request.amount <= 0:
+    
+    # ==================== 1. 驗證輸入參數 ====================
+    if not request.from_account and not request.from_account_number:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Amount must be positive"
+            detail="請提供來源帳戶ID或帳號"
         )
     
-    # 取得來源帳戶
-    src_account = session.get(Account, request.from_account)
+    if not request.to_account and not request.to_account_number:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="請提供目標帳戶ID或帳號"
+        )
+    
+    # 驗證金額
+    if request.amount < TRANSFER_LIMITS["min_amount"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"轉帳金額不可低於 {TRANSFER_LIMITS['min_amount']} 元"
+        )
+    
+    if request.amount > TRANSFER_LIMITS["single_max"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"單筆轉帳金額不可超過 {TRANSFER_LIMITS['single_max']:,} 元"
+        )
+    
+    # ==================== 2. 取得來源帳戶 ====================
+    if request.from_account:
+        src_account = session.get(Account, request.from_account)
+    else:
+        statement = select(Account).where(Account.account_number == request.from_account_number)
+        src_account = session.exec(statement).first()
+    
     if not src_account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Source account not found"
+            detail="來源帳戶不存在"
         )
     
-    # 取得目標帳戶
-    dst_account = session.get(Account, request.to_account)
+    # 驗證來源帳戶所有權
+    if src_account.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="您沒有權限操作此帳戶"
+        )
+    
+    # 驗證來源帳戶狀態
+    if src_account.status != "active":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"來源帳戶狀態異常（{src_account.status}），無法進行轉帳"
+        )
+    
+    # ==================== 3. 取得目標帳戶 ====================
+    if request.to_account:
+        dst_account = session.get(Account, request.to_account)
+    else:
+        statement = select(Account).where(Account.account_number == request.to_account_number)
+        dst_account = session.exec(statement).first()
+    
     if not dst_account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Destination account not found"
+            detail="目標帳戶不存在"
         )
     
-    # 驗證餘額
-    if src_account.balance < request.amount:
+    # 驗證目標帳戶狀態
+    if dst_account.status != "active":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Insufficient balance"
+            detail=f"目標帳戶狀態異常（{dst_account.status}），無法接收轉帳"
         )
     
-    # 執行轉帳
+    # 驗證不可轉給自己
+    if src_account.id == dst_account.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="不可轉帳至相同帳戶"
+        )
+    
+    # ==================== 4. 計算手續費 ====================
+    # 判斷是否為本行轉帳（簡化版：檢查帳號前3碼是否相同）
+    is_same_bank = (
+        src_account.account_number[:3] == dst_account.account_number[:3]
+    )
+    fee = calculate_transfer_fee(request.amount, is_same_bank)
+    total_amount = request.amount + fee
+    
+    # ==================== 5. 驗證餘額 ====================
+    if src_account.balance < total_amount:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"餘額不足。可用餘額: {src_account.balance:,.2f} 元，需要: {total_amount:,.2f} 元（含手續費 {fee} 元）"
+        )
+    
+    # ==================== 6. 驗證單日轉帳限額 ====================
+    if not validate_daily_transfer_limit(session, src_account.id, request.amount):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"已超過單日轉帳限額 {TRANSFER_LIMITS['daily_max']:,} 元"
+        )
+    
+    # ==================== 7. 執行轉帳 ====================
     now = datetime.now(timezone.utc).isoformat()
     
-    # 更新帳戶餘額
-    src_account.balance -= request.amount
-    dst_account.balance += request.amount
+    # 生成交易流水號（確保唯一性）
+    while True:
+        transaction_number = generate_transaction_number()
+        existing = session.exec(
+            select(Transaction).where(Transaction.transaction_number == transaction_number)
+        ).first()
+        if not existing:
+            break
     
-    # 建立來源帳戶交易記錄
-    src_transaction = Transaction(
-        account_id=request.from_account,
-        type="transfer_out",
-        amount=-request.amount,
-        currency="TWD",
-        related_account=request.to_account,
-        description=request.description or f"轉帳至帳戶 {request.to_account}",
-        created_at=now
-    )
-    
-    # 建立目標帳戶交易記錄
-    dst_transaction = Transaction(
-        account_id=request.to_account,
-        type="transfer_in",
-        amount=request.amount,
-        currency="TWD",
-        related_account=request.from_account,
-        description=request.description or f"來自帳戶 {request.from_account} 的轉帳",
-        created_at=now
-    )
-    
-    session.add(src_account)
-    session.add(dst_account)
-    session.add(src_transaction)
-    session.add(dst_transaction)
-    session.commit()
-    session.refresh(src_transaction)
-    
-    return {
-        "transaction_id": src_transaction.id,
-        "from_account": request.from_account,
-        "to_account": request.to_account,
-        "amount": request.amount,
-        "created_at": now
-    }
+    try:
+        # 更新帳戶餘額
+        src_account.balance -= total_amount
+        dst_account.balance += request.amount
+        
+        # 建立來源帳戶交易記錄（轉出）
+        src_transaction = Transaction(
+            transaction_number=transaction_number,
+            account_id=src_account.id,
+            type="transfer_out",
+            amount=-request.amount,  # 負數表示轉出
+            currency="TWD",
+            fee=fee,
+            related_account=dst_account.id,
+            related_account_number=dst_account.account_number,
+            status="completed",
+            description=request.description or f"轉帳至 {dst_account.account_number} ({dst_account.full_name})",
+            created_at=now
+        )
+        
+        # 建立目標帳戶交易記錄（轉入）
+        dst_transaction = Transaction(
+            transaction_number=transaction_number,  # 使用相同流水號關聯
+            account_id=dst_account.id,
+            type="transfer_in",
+            amount=request.amount,  # 正數表示轉入
+            currency="TWD",
+            fee=0,  # 收款方不收手續費
+            related_account=src_account.id,
+            related_account_number=src_account.account_number,
+            status="completed",
+            description=request.description or f"來自 {src_account.account_number} ({src_account.full_name}) 的轉帳",
+            created_at=now
+        )
+        
+        # 提交所有變更
+        session.add(src_account)
+        session.add(dst_account)
+        session.add(src_transaction)
+        session.add(dst_transaction)
+        session.commit()
+        session.refresh(src_transaction)
+        
+        # ==================== 8. 返回轉帳結果 ====================
+        return TransferResponse(
+            transaction_id=src_transaction.id,
+            transaction_number=transaction_number,
+            from_account=src_account.id,
+            from_account_number=src_account.account_number,
+            to_account=dst_account.id,
+            to_account_number=dst_account.account_number,
+            amount=request.amount,
+            fee=fee,
+            total_amount=total_amount,
+            status="completed",
+            created_at=now,
+            message=f"轉帳成功！交易流水號: {transaction_number}"
+        )
+        
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"轉帳處理失敗: {str(e)}"
+        )
 
 @router.post("/exchange", response_model=ExchangeResponse)
 async def exchange(
