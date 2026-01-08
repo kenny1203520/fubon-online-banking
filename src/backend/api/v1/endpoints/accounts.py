@@ -51,7 +51,7 @@ async def list_accounts(
     Parameters:
     - page: Page number (頁碼)
     - per_page: Number of accounts per page (每頁帳戶數)
-    - current_user: Authenticated user (認證用戶)
+    - current_user: Authenticated user (認證使用者)
     - session: Database session (資料庫session)
     """
     offset = (page - 1) * per_page # 計算偏移量
@@ -85,7 +85,7 @@ async def get_account(
 
     Parameters:
     - account_id: ID of the account (帳戶ID)
-    - current_user: Authenticated user (認證用戶)
+    - current_user: Authenticated user (認證使用者)
     - session: Database session (資料庫session)
     """
     # 驗證使用者身份
@@ -116,7 +116,7 @@ async def get_account(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail='account not found'
-        ) # 帳戶不存在或不屬於當前用戶，返回404錯誤
+        ) # 帳戶不存在或不屬於當前使用者，返回404錯誤
     
     if not account.id:
         raise HTTPException(
@@ -140,7 +140,7 @@ async def get_account(
         created_at=account.created_at
     ) # 返回帳戶詳情
 
-@router.post('/open', status_code=status.HTTP_201_CREATED, response_model=AccountCreateResponse)
+@router.post('/open', name="申請新帳戶", status_code=status.HTTP_201_CREATED, response_model=AccountCreateResponse)
 async def open_account(request: AccountCreateRequest, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     """
     Open a new account (申請新帳戶)  
@@ -158,6 +158,7 @@ async def open_account(request: AccountCreateRequest, current_user: User = Depen
     - account_type: Account type (帳戶類型: savings, checking, fixed_deposit)
     - initial_deposit: Initial deposit amount (初始存款金額)
     """
+    # 驗證使用者身份
     if not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -227,7 +228,7 @@ async def open_account(request: AccountCreateRequest, current_user: User = Depen
         message='申請已建立，等待審核。預計 1-3 個工作天完成審核。'
     )
 
-@router.post('/balance', response_model=BalanceResponse)
+@router.post('/balance', name="查詢帳戶餘額", response_model=BalanceResponse)
 async def get_balance(
     request: BalanceRequest,
     current_user: User = Depends(get_current_user),
@@ -237,10 +238,10 @@ async def get_balance(
     Get account balance (查詢帳戶餘額).  
     Parameters:
     - account_id: ID of the account (帳戶ID)
-    - current_user: Authenticated user (認證用戶)
+    - current_user: Authenticated user (認證使用者)
     - session: Database session (資料庫session)
     """
-    # 驗證用戶身份
+    # 驗證使用者身份
     if not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -261,13 +262,20 @@ async def get_balance(
             detail='account not found'
         ) # 帳戶不存在，返回404錯誤
     
+    # 驗證帳戶是否屬於當前使用者
+    if account.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='cannot access an account that does not belong to you'
+        )
+    
     return {
         'account_id': account.id,
         'balance': account.balance,
         'cashless_enabled': bool(account.cashless_enabled)
     } # 返回帳戶餘額和無現金提款狀態
 
-@router.post('/transactions', response_model=TransactionList)
+@router.post('/transactions', name="查詢帳戶交易紀錄", response_model=TransactionList)
 async def get_transactions(
     request: TransactionsRequest,
     page: int = Query(1, ge=1),
@@ -285,10 +293,10 @@ async def get_transactions(
     - per_page: Number of transactions per page (每頁交易數)
     - frm: Start date (inclusive) in ISO format (起始日期，包含當天)
     - to: End date (inclusive) in ISO format (結束日期，包含當天)
-    - current_user: Authenticated user (認證用戶)
+    - current_user: Authenticated user (認證使用者)
     - session: Database session (資料庫session)
     """
-    # 驗證用戶身份
+    # 驗證使用者身份
     if not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -340,7 +348,7 @@ async def get_transactions(
         'total_pages': total_pages
     }
 
-@router.post('/transfer', response_model=TransferResponse)
+@router.post('/transfer', name="帳戶間轉帳", response_model=TransferResponse)
 async def transfer(
     request: TransferRequest,
     current_user: User = Depends(get_current_user),
@@ -350,10 +358,10 @@ async def transfer(
     Transfer money between accounts (帳戶間轉帳)  
     Parameters:
     - request: TransferRequest object containing transfer details (轉帳請求物件)
-    - current_user: Authenticated user (認證用戶)
+    - current_user: Authenticated user (認證使用者)
     - session: Database session (資料庫session)
     """
-    # 驗證用戶身份
+    # 驗證使用者身份
     if not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -377,7 +385,7 @@ async def transfer(
     if request.amount <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Invalid account ID format'
+            detail='Invalid transfer amount'
         )
     
     #  取得來源和目標帳戶
@@ -397,18 +405,18 @@ async def transfer(
             detail='invalid account data'
         )
     
+    # 檢查帳戶是否屬於當前使用者
+    if src_account.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='cannot transfer from an account that does not belong to you'
+        )
+    
     # 檢查來源帳戶餘額是否足夠
     if src_account.balance < request.amount:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='Insufficient funds in the source account'
-        )
-    
-    # 檢查帳戶是否屬於當前用戶
-    if src_account.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail='cannot transfer from an account that does not belong to you'
         )
     
     # 執行轉帳
@@ -455,7 +463,7 @@ async def transfer(
     )
 
 
-@router.post('/cashless_withdraw', response_model=CashlessResponse)
+@router.post('/cashless_withdraw', name="啟用/停用無現金提款功能", response_model=CashlessResponse)
 async def cashless_withdraw(
     request: CashlessRequest,
     current_user: User = Depends(get_current_user),
@@ -467,6 +475,19 @@ async def cashless_withdraw(
     - account_id: ID of the account (帳戶ID)
     - enabled: True to enable, False to disable (啟用為True，停用為False)
     """    
+    # 驗證使用者身份
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='authentication required to set cashless withdrawal'
+        )
+
+    if not current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='invalid user information'
+        )
+
     account = session.get(Account, request.account_id)
     
     if not account:
@@ -475,9 +496,17 @@ async def cashless_withdraw(
             detail='account not found'
         )
     
+    # 驗證帳戶是否屬於當前使用者
+    if account.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='cannot modify an account that does not belong to you'
+        )
+    
     account.cashless_enabled = 1 if request.enabled else 0
     session.add(account)
     session.commit()
+    session.refresh(account)
     
     return {
         'account_id': account.id,

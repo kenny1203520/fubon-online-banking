@@ -27,7 +27,7 @@ export const accountService = {
 
   // 設定無現金提款功能
   setCashless: (accountId: string, enabled: boolean) =>
-    apiClient.post<CashlessResponse>('/accounts/cashless', { account_id: accountId, enabled }),
+    apiClient.post<CashlessResponse>('/accounts/cashless_withdraw', { account_id: accountId, enabled }),
 
   // 取得帳戶交易紀錄
   getAccountTransactions: (accountId: string, filters?: TransactionFilters) =>
