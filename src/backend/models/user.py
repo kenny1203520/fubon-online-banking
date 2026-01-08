@@ -3,7 +3,7 @@ from typing import Optional
 import uuid
 
 class User(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
     username: str = Field(index=True, unique=True)
     password_hash: str
     email: Optional[str] = Field(default=None, index=True)
@@ -14,8 +14,8 @@ class SessionModel(SQLModel, table=True):
     雙 Token 機制session模型
     (Dual Token Mechanism Session Model)
     """
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(index=True)
+    id: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(index=True)
     token_id: str = Field(index=True, default_factory=lambda: str(uuid.uuid4())) # 唯一 token ID
     access_token: str = Field(index=True)  # 短期 token
     refresh_token: str = Field(index=True) # 長期 token

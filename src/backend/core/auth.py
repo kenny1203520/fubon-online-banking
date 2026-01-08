@@ -56,7 +56,7 @@ def create_token(expires_delta: Optional[timedelta] = None) -> str:
     """
     return secrets.token_urlsafe(32)
 
-def create_user_tokens(user_id: int, session: Session) -> Dict[str, Any]:
+def create_user_tokens(user_id: uuid.UUID, session: Session) -> Dict[str, Any]:
     """
     為用戶創建訪問token和刷新token（雙 Token 機制）
     (Create access and refresh tokens for user - Dual Token Mechanism)

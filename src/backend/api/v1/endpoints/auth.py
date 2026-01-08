@@ -42,16 +42,18 @@ async def login(request: UserLoginRequest, response: Response, session: Session 
     
     # 驗證密碼 (使用 bcrypt)
     if not user or not verify_password(request.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='invalid credentials'
-        ) # 處理無效憑證錯誤
+        return {
+            'token_id': '',
+            'token': '',
+            'expires_in': 0,
+            'message': 'invalid credentials',
+        }
     
     # 確保使用者ID存在
     if user.id is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail='user ID is None'
+            detail='user ID isn\'t exist'
         ) # 處理使用者ID為None錯誤
     
     # 生成雙 Token
@@ -225,12 +227,20 @@ async def verify(request: Request, session: Session = Depends(get_session))-> bo
     """
     refresh_token = request.cookies.get("refresh_token")
 
-    if not refresh_token: return False
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='refresh token missing'
+        )
     
     # 驗證刷新token
     token_id = verify_refresh_token(refresh_token, session)
     
-    if not token_id: return False
+    if not token_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='invalid or expired refresh token'
+        )
 
     return True
 

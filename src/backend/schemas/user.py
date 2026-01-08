@@ -1,6 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel
-from fastapi import Request
+import uuid
 
 class UserLoginRequest(BaseModel):
     username: str
@@ -18,7 +18,7 @@ class UserRegisterRequest(BaseModel):
     email: Optional[str] = None
 
 class UserRegisterResponse(BaseModel):
-    user_id: int
+    user_id: uuid.UUID
     username: str
     message: str
 
@@ -34,6 +34,6 @@ class UserRefreshResponse(BaseModel):
     message: str
 
 class UserMeResponse(BaseModel):
-    user_id: int
+    user_id: uuid.UUID
     username: str
     email: Optional[str] = None
