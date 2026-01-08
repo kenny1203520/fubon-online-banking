@@ -14,6 +14,7 @@ export interface RegisterRequest {
   username: string
   password: string
   email?: string
+  phone?: string
 }
 
 export interface RegisterResponse {
@@ -36,7 +37,9 @@ export interface User {
   user_id: string
   username: string
   email?: string
+  phone?: string
   role?: UserRole
+  is_admin?: boolean
 }
 
 export interface AuthState {

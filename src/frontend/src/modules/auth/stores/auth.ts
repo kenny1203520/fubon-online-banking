@@ -78,10 +78,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const register = async (username: string, password: string, email?: string) => {
+  const register = async (username: string, password: string, email?: string, phone?: string) => {
     isLoading.value = true
     try {
-      const response = await authService.register({ username, password, email })
+      const response = await authService.register({ username, password, email, phone })
       return response.data
     } catch (error: unknown) {
       const err = error as { response?: { data?: { detail?: string } } }
