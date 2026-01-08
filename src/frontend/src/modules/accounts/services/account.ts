@@ -22,7 +22,7 @@ export const accountService = {
   createAccount: (data: AccountCreate) => apiClient.post<AccountCreateResponse>('/accounts/open', data),
 
   // 查詢帳戶餘額
-  getBalance: (accountId: number) =>
+  getBalance: (accountId: string) =>
     apiClient.post<BalanceResponse>('/accounts/balance', { account_id: accountId }),
 
   // 設定無現金提款功能

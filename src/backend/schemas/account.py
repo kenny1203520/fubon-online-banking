@@ -79,9 +79,6 @@ class AccountListResponse(BaseModel):
     total: int
     total_pages: int
 
-class BalanceRequest(BaseModel):
-    account_id: uuid.UUID
-
 class BalanceResponse(BaseModel):
     account_id: uuid.UUID
     balance: float
