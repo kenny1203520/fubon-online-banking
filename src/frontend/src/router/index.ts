@@ -97,13 +97,29 @@ const routes: RouteRecordRaw[] = [
   // 交易路由
   {
     path: '/transactions',
-    name: 'Transactions',
-    component: () => import('@/modules/transactions/views/TransferPage.vue'),
+    redirect: '/transactions/transfer',
+  },
+  {
+    path: '/transactions/transfer',
+    name: 'Transfer',
+    component: () => import('@/modules/transactions/views/InstantTransferPage.vue'),
     meta: {
       requiresAuth: true,
-      title: '轉帳',
-      description: '轉帳頁面',
+      title: '即時轉帳',
+      description: '即時轉帳頁面',
       icon: 'transfer',
+      menuVisible: true,
+    },
+  },
+  {
+    path: '/transactions/scheduled',
+    name: 'ScheduledTransfer',
+    component: () => import('@/modules/transactions/views/ScheduledTransferPage.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '預約轉帳',
+      description: '預約轉帳頁面',
+      icon: 'scheduled',
       menuVisible: true,
     },
   },

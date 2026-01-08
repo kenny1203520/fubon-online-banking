@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTransactionStore } from '../stores/transaction'
 import { useAccountStore } from '@/modules/accounts/stores/account'
 import type { TransferRequest } from '../types'
+import { TAIWAN_BANKS, validateAccountNumber, formatAccountNumber, isInternalBank, type BankInfo, getBankByCode } from '../constants/banks'
 
 const router = useRouter()
 const transactionStore = useTransactionStore()
@@ -12,11 +13,17 @@ const accountStore = useAccountStore()
 // Form data
 const form = ref<TransferRequest>({
   from_account_id: undefined,
+  from_account_number: '',
   to_account_number: '',
   amount: 0,
+  currency: 'TWD',
   description: '',
   transfer_type: 'internal'
 })
+
+// Bank selection
+const selectedBank = ref<string>('012') // 預設富邦銀行
+const accountNumber = ref<string>('') // 分行代碼+帳號 (不含銀行代碼)
 
 // UI state
 const isSubmitting = ref(false)
@@ -24,29 +31,31 @@ const errorMessage = ref('')
 const successMessage = ref('')
 const showConfirmDialog = ref(false)
 
-// Transfer type options
-const transferTypes = [
-  { value: 'internal', label: '本行轉帳', fee: 0 },
-  { value: 'other', label: '跨行轉帳', fee: 15 },
-  { value: 'scheduled', label: '預約轉帳', fee: 0 }
-]
-
 // Computed
 const selectedAccount = computed(() => 
   accountStore.accounts.find(a => a.id === form.value.from_account_id)
 )
 
-const selectedTransferType = computed(() => 
-  transferTypes.find(t => t.value === form.value.transfer_type)
+const selectedBankInfo = computed<BankInfo | undefined>(() => 
+  TAIWAN_BANKS.find(b => b.code === selectedBank.value)
 )
 
-const transferFee = computed(() => selectedTransferType.value?.fee || 0)
+const transferFee = computed(() => {
+  // 本行轉帳免手續費，跨行轉帳收15元
+  return isInternalBank(selectedBank.value) ? 0 : 15
+})
 
 const totalAmount = computed(() => form.value.amount + transferFee.value)
 
+const isAccountNumberValid = computed(() => {
+  if (!accountNumber.value) return false
+  return validateAccountNumber(selectedBank.value, accountNumber.value)
+})
+
 const isFormValid = computed(() => {
   return form.value.from_account_id 
-    && form.value.to_account_number 
+    && selectedBank.value
+    && isAccountNumberValid.value
     && form.value.amount > 0
     && selectedAccount.value
     && totalAmount.value <= selectedAccount.value.balance
@@ -54,12 +63,19 @@ const isFormValid = computed(() => {
 
 const errorText = computed(() => {
   if (!form.value.from_account_id) return '請選擇轉出帳戶'
-  if (!form.value.to_account_number) return '請輸入收款帳號'
+  if (!selectedBank.value) return '請選擇收款銀行'
+  if (!accountNumber.value) return '請輸入收款帳號'
+  if (!isAccountNumberValid.value) return '帳號格式不正確（應為11~14碼數字）'
   if (form.value.amount <= 0) return '請輸入有效的轉帳金額'
   if (selectedAccount.value && totalAmount.value > selectedAccount.value.balance) {
     return '帳戶餘額不足'
   }
   return ''
+})
+
+const fullAccountNumber = computed(() => {
+  if (!selectedBank.value || !accountNumber.value) return ''
+  return formatAccountNumber(selectedBank.value, accountNumber.value)
 })
 
 // Methods
@@ -80,6 +96,13 @@ const handleSubmit = () => {
     errorMessage.value = errorText.value
     return
   }
+  
+  // 設定完整的收款帳號 (銀行代碼-分行代碼-帳號)
+  form.value.to_account_number = fullAccountNumber.value
+  
+  // 設定轉帳類型 (本行或跨行)
+  form.value.transfer_type = isInternalBank(selectedBank.value) ? 'internal' : 'other'
+  
   showConfirmDialog.value = true
 }
 
@@ -98,11 +121,15 @@ const confirmTransfer = async () => {
     // Reset form
     form.value = {
       from_account_id: accountStore.accounts[0]?.id,
+      from_account_number: accountStore.accounts[0]?.account_number,
       to_account_number: '',
       amount: 0,
+      currency: 'TWD',
       description: '',
       transfer_type: 'internal'
     }
+    selectedBank.value = '012'
+    accountNumber.value = ''
 
     // Reload accounts to update balance
     await loadAccounts()
@@ -127,6 +154,33 @@ const formatCurrency = (amount: number) => {
   }).format(amount)
 }
 
+// 監聽帳號輸入，自動識別銀行代碼
+watch(accountNumber, (newValue) => {
+  // 移除所有非數字字符和分隔符號
+  const cleaned = newValue.replace(/[^0-9]/g, '')
+  
+  // 如果輸入超過14碼（可能包含銀行代碼），嘗試解析
+  if (cleaned.length > 14) {
+    const possibleBankCode = cleaned.substring(0, 3)
+    const bank = getBankByCode(possibleBankCode)
+    
+    if (bank) {
+      // 找到有效的銀行代碼
+      selectedBank.value = possibleBankCode
+    }
+  }
+  // 如果以 3 碼數字開頭且後面有連字號，也嘗試解析
+  else if (/^\d{3}[-]/.test(newValue)) {
+    const possibleBankCode = cleaned.substring(0, 3)
+    const bank = getBankByCode(possibleBankCode)
+    
+    if (bank) {
+      // 找到有效的銀行代碼
+      selectedBank.value = possibleBankCode
+    }
+  }
+})
+
 onMounted(() => {
   loadAccounts()
 })
@@ -136,19 +190,19 @@ onMounted(() => {
   <div class="transfer-page">
     <!-- Header -->
     <div class="page-header">
-      <h1 class="page-title">轉帳服務</h1>
-      <p class="page-subtitle">快速、安全的轉帳體驗</p>
+      <h1 class="page-title">即時轉帳</h1>
+      <p class="page-subtitle">快速、安全的即時轉帳服務</p>
     </div>
 
     <!-- Quick Actions -->
     <div class="quick-actions">
+      <button class="action-btn" @click="router.push('/transactions/scheduled')">
+        <span class="icon">⏰</span>
+        <span>預約轉帳</span>
+      </button>
       <button class="action-btn" @click="router.push('/transactions/history')">
         <span class="icon">📋</span>
         <span>交易紀錄</span>
-      </button>
-      <button class="action-btn" @click="router.push('/transactions/exchange')">
-        <span class="icon">💱</span>
-        <span>外幣兌換</span>
       </button>
     </div>
 
@@ -169,28 +223,6 @@ onMounted(() => {
         <h2 class="form-title">轉帳資訊</h2>
 
         <form @submit.prevent="handleSubmit">
-          <!-- Transfer Type -->
-          <div class="form-group">
-            <label class="form-label">轉帳類型</label>
-            <div class="transfer-type-group">
-              <label 
-                v-for="type in transferTypes" 
-                :key="type.value"
-                class="transfer-type-option"
-                :class="{ active: form.transfer_type === type.value }"
-              >
-                <input 
-                  type="radio" 
-                  :value="type.value"
-                  v-model="form.transfer_type"
-                  class="radio-input"
-                >
-                <span class="type-label">{{ type.label }}</span>
-                <span v-if="type.fee > 0" class="type-fee">手續費 {{ formatCurrency(type.fee) }}</span>
-              </label>
-            </div>
-          </div>
-
           <!-- From Account -->
           <div class="form-group">
             <label class="form-label" for="from-account">轉出帳戶</label>
@@ -215,17 +247,46 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- To Account -->
+          <!-- Bank Selection -->
           <div class="form-group">
-            <label class="form-label" for="to-account">收款帳號</label>
-            <input 
-              id="to-account"
-              v-model="form.to_account_number"
-              type="text"
-              class="form-input"
-              placeholder="請輸入收款帳號"
+            <label class="form-label" for="bank-select">收款銀行</label>
+            <select 
+              id="bank-select"
+              v-model="selectedBank" 
+              class="form-select"
               required
             >
+              <option 
+                v-for="bank in TAIWAN_BANKS" 
+                :key="bank.code"
+                :value="bank.code"
+              >
+                {{ bank.code }} - {{ bank.name }}
+              </option>
+            </select>
+            <div v-if="selectedBankInfo" class="bank-info">
+              <span v-if="isInternalBank(selectedBank)" class="badge badge-success">本行轉帳 · 免手續費</span>
+              <span v-else class="badge badge-warning">跨行轉帳 · 手續費 {{ formatCurrency(transferFee) }}</span>
+            </div>
+          </div>
+
+          <!-- Account Number -->
+          <div class="form-group">
+            <label class="form-label" for="account-number">收款帳號</label>
+            <input 
+              id="account-number"
+              v-model="accountNumber"
+              type="text"
+              class="form-input"
+              placeholder="請輸入分行代碼及帳號 (例: 12345678901)"
+              maxlength="14"
+              required
+            >
+            <div class="input-hint">
+              <span v-if="!accountNumber">格式：分行代碼(4碼) + 帳號(7~10碼)</span>
+              <span v-else-if="!isAccountNumberValid" class="text-error">❌ 帳號格式不正確</span>
+              <span v-else class="text-success">✓ 完整帳號：{{ fullAccountNumber }}</span>
+            </div>
           </div>
 
           <!-- Amount -->
@@ -298,8 +359,12 @@ onMounted(() => {
             <span class="detail-value">{{ selectedAccount?.account_number }}</span>
           </div>
           <div class="detail-row">
+            <span class="detail-label">收款銀行</span>
+            <span class="detail-value">{{ selectedBankInfo?.name }}</span>
+          </div>
+          <div class="detail-row">
             <span class="detail-label">收款帳號</span>
-            <span class="detail-value">{{ form.to_account_number }}</span>
+            <span class="detail-value">{{ fullAccountNumber }}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">轉帳金額</span>
@@ -477,52 +542,43 @@ onMounted(() => {
   font-family: inherit;
 }
 
-.account-info {
+.account-info, .bank-info {
   margin-top: 8px;
   font-size: 14px;
   color: #666;
 }
 
-/* Transfer Type */
-.transfer-type-group {
-  display: flex;
-  gap: 12px;
-}
-
-.transfer-type-option {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.transfer-type-option:hover {
-  border-color: #0066cc;
-  background: #f0f7ff;
-}
-
-.transfer-type-option.active {
-  border-color: #0066cc;
-  background: #f0f7ff;
-}
-
-.radio-input {
-  display: none;
-}
-
-.type-label {
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-
-.type-fee {
-  font-size: 12px;
+.input-hint {
+  margin-top: 8px;
+  font-size: 13px;
   color: #666;
+}
+
+.text-error {
+  color: #c53030;
+}
+
+.text-success {
+  color: #22543d;
+}
+
+/* Badge */
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.badge-success {
+  background: #f0fff4;
+  color: #22543d;
+}
+
+.badge-warning {
+  background: #fffaf0;
+  color: #c05621;
 }
 
 /* Amount Input */
@@ -699,10 +755,6 @@ onMounted(() => {
   }
 
   .quick-actions {
-    flex-direction: column;
-  }
-
-  .transfer-type-group {
     flex-direction: column;
   }
 }

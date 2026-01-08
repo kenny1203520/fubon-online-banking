@@ -1,18 +1,6 @@
 from typing import Optional, List
 from pydantic import BaseModel
 
-
-class TransferRequest(BaseModel):
-    from_account_number: str
-    to_account_number: str
-    amount: float
-    currency: str = "TWD"
-
-class TransferResponse(BaseModel):
-    message: str
-    from_new_balance: float
-    to_new_balance: float
-
 class CreditCardCreate(BaseModel):
     card_type: str
     annual_income: float

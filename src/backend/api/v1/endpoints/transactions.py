@@ -185,13 +185,15 @@ async def transfer(
     轉帳交易 (Transfer money between accounts)
     
     Parameters:
-    - from_account: 來源帳戶ID (source account UUID, 擇一)
-    - from_account_number: 來源帳號 (source account number, 擇一)
-    - to_account: 目標帳戶ID (destination account UUID, 擇一)
-    - to_account_number: 目標帳號 (destination account number, 擇一)
+    - from_account_id: 來源帳戶ID (source account UUID)
+    - from_account_number: 來源帳號 (source account number)
+    - to_account_number: 目標帳號 (destination account number)
     - amount: 轉帳金額 (transfer amount)
+    - currency: 貨幣類型 (currency type, e.g., TWD)
     - description: 備註 (description, optional)
+    - show_desc_both: 雙方皆顯示備註 (show description to both parties)
     - password: 交易密碼 (transaction password, optional)
+    - transfer_type: 轉帳類型 (transfer type, e.g., instant scheduled)
     
     Features:
     - 支援帳號或帳戶ID轉帳
@@ -202,16 +204,16 @@ async def transfer(
     """
     
     # ==================== 1. 驗證輸入參數 ====================
-    if not request.from_account and not request.from_account_number:
+    if not request.from_account_id and not request.from_account_number:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="請提供來源帳戶ID或帳號"
+            detail="請提供來源帳戶ID及帳號"
         )
     
-    if not request.to_account and not request.to_account_number:
+    if not request.to_account_number or not request.to_account_number.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="請提供目標帳戶ID或帳號"
+            detail="請提供目標帳戶帳號"
         )
     
     # 驗證金額
@@ -228,8 +230,8 @@ async def transfer(
         )
     
     # ==================== 2. 取得來源帳戶 ====================
-    if request.from_account:
-        src_account = session.get(Account, request.from_account)
+    if request.from_account_id:
+        src_account = session.get(Account, request.from_account_id)
     else:
         statement = select(Account).where(Account.account_number == request.from_account_number)
         src_account = session.exec(statement).first()
@@ -255,11 +257,8 @@ async def transfer(
         )
     
     # ==================== 3. 取得目標帳戶 ====================
-    if request.to_account:
-        dst_account = session.get(Account, request.to_account)
-    else:
-        statement = select(Account).where(Account.account_number == request.to_account_number)
-        dst_account = session.exec(statement).first()
+    statement = select(Account).where(Account.account_number == request.to_account_number)
+    dst_account = session.exec(statement).first()
     
     if not dst_account:
         raise HTTPException(
@@ -324,11 +323,12 @@ async def transfer(
         src_transaction = Transaction(
             transaction_number=transaction_number,
             account_id=src_account.id,
+            account_number=src_account.account_number,
             type="transfer_out",
             amount=-request.amount,  # 負數表示轉出
             currency="TWD",
             fee=fee,
-            related_account=dst_account.id,
+            related_account_id=dst_account.id,
             related_account_number=dst_account.account_number,
             status="completed",
             description=request.description or f"轉帳至 {dst_account.account_number} ({dst_account.full_name})",
@@ -337,13 +337,14 @@ async def transfer(
         
         # 建立目標帳戶交易記錄（轉入）
         dst_transaction = Transaction(
-            transaction_number=transaction_number,  # 使用相同流水號關聯
+            transaction_number=transaction_number,
             account_id=dst_account.id,
+            account_number=dst_account.account_number,
             type="transfer_in",
             amount=request.amount,  # 正數表示轉入
             currency="TWD",
             fee=0,  # 收款方不收手續費
-            related_account=src_account.id,
+            related_account_id=src_account.id,
             related_account_number=src_account.account_number,
             status="completed",
             description=request.description or f"來自 {src_account.account_number} ({src_account.full_name}) 的轉帳",
@@ -362,11 +363,10 @@ async def transfer(
         return TransferResponse(
             transaction_id=src_transaction.id,
             transaction_number=transaction_number,
-            from_account=src_account.id,
             from_account_number=src_account.account_number,
-            to_account=dst_account.id,
             to_account_number=dst_account.account_number,
             amount=request.amount,
+            currency="TWD",
             fee=fee,
             total_amount=total_amount,
             status="completed",
@@ -446,6 +446,7 @@ async def exchange(
     # 建立交易記錄
     transaction = Transaction(
         account_id=request.from_account,
+        account_number=account.account_number,
         type="exchange",
         amount=request.amount,
         currency=request.from_currency,

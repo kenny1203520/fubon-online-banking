@@ -1,7 +1,7 @@
 from .account import AccountCreateRequest, AccountCreateResponse, AccountResponse, AccountListResponse, BalanceResponse, CashlessRequest, CashlessResponse
-from .transaction import TransactionResponse, TransactionList, TransactionQuery
+from .transaction import TransactionResponse, TransactionList, TransactionQuery, TransferRequest, TransferResponse
 from .credit_card import (
-    TransferRequest, TransferResponse, CreditCardCreate, CreditCardApplicationResponse,
+    CreditCardCreate, CreditCardApplicationResponse,
     CreditCardApplicationList, CreditCardPaymentRequest, CreditCardPaymentResponse,
     CreditCardCashAdvanceRequest, CreditCardCashAdvanceResponse
 )

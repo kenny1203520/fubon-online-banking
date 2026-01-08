@@ -15,8 +15,6 @@ class TransactionResponse(BaseModel):
     related_account_id: Optional[uuid.UUID] = None
     related_account_number: Optional[str] = None
     status: str
-    fee: float = 0.0
-    status: str
     description: Optional[str] = None
     created_at: str
     updated_at: Optional[str] = None
@@ -36,19 +34,19 @@ class TransactionList(BaseModel):
 
 class TransactionQuery(BaseModel):
     account_id: uuid.UUID
-    account_id: uuid.UUID
     frm: Optional[str] = None
     to: Optional[str] = None
 
 class TransferRequest(BaseModel):
-    from_account: Optional[uuid.UUID] = None # 來源帳戶ID（擇一）
-    from_account_number: Optional[str] = None # 來源帳號（擇一）
-    to_account: Optional[uuid.UUID] = None # 目標帳戶ID（擇一）
-    to_account_number: Optional[str] = None # 目標帳號（擇一）
+    from_account_id: Optional[uuid.UUID] = None  # 來源帳戶ID（可選，若無則用帳號）
+    from_account_number: Optional[str] = None  # 來源帳號（可選）
+    to_account_number: str # 目標帳號（必填）
     amount: float = Field(gt=0, description="轉帳金額必須大於0")
     currency: str = Field(default="TWD", description="貨幣類型，預設為 TWD")
     description: Optional[str] = Field(None, max_length=200)
+    show_desc_both: bool = Field(default=False)
     password: Optional[str] = None # 交易密碼（可選）
+    transfer_type: str
     
     @field_validator('amount')
     def validate_amount(cls, v):
@@ -71,16 +69,15 @@ class TransferRequest(BaseModel):
 class TransferResponse(BaseModel):
     transaction_id: int
     transaction_number: str
-    from_account: uuid.UUID
     from_account_number: str
-    to_account: uuid.UUID
     to_account_number: str
     amount: float
+    currency: str
     fee: float
     total_amount: float # 含手續費的總金額
-    status: set
-    created_at: str
+    status: str
     message: str
+    created_at: str
 
     class Config:
         from_attributes = True

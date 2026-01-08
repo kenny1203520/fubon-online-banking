@@ -13,8 +13,10 @@ from schemas.account import (
     AccountCreateRequest, AccountResponse, AccountListResponse, BalanceResponse,
     CashlessRequest, CashlessResponse, AccountCreateResponse, BalanceRequest
 )
-from schemas.transaction import TransactionsRequest, TransactionList, TransactionResponse
-from schemas.credit_card import TransferRequest, TransferResponse
+from schemas.transaction import ( 
+    TransactionsRequest, TransactionList, TransactionResponse,
+    TransferRequest, TransferResponse 
+)
 from core.database import get_session
 from core.auth import get_current_user
 
@@ -330,7 +332,7 @@ async def get_transactions(
     
     return {
         'items': [TransactionResponse(
-            id=0 if t.id is None else t.id,
+            id=t.id if t.id is not None else 0,
             transaction_number=t.transaction_number,
             account_id=t.account_id,
             account_number=t.account_number,
@@ -413,54 +415,73 @@ async def transfer(
             detail='cannot transfer from an account that does not belong to you'
         )
     
+    # 手續費計算
+    fee = 0.0
+    if request.transfer_type == 'other':
+        fee = 15.0 # 轉帳到其他銀行手續費15元
+
     # 檢查來源帳戶餘額是否足夠
-    if src_account.balance < request.amount:
+    if src_account.balance < request.amount + fee:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='Insufficient funds in the source account'
         )
     
     # 執行轉帳
-    src_account.balance -= request.amount
+    src_account.balance -= request.amount + fee
     dst_account.balance += request.amount
     
     now = datetime.now(timezone.utc).isoformat()
     
     # Record transactions
-    debit = Transaction(
+    trans_out = Transaction(
         account_id=src_account.id,
         account_number=request.from_account_number,
-        type='debit',
+        type='transfer_out',
         amount=-request.amount,
         currency=request.currency,
         related_account_id=dst_account.id,
         related_account_number=request.to_account_number,
-        description='transfer out',
+        description=request.description,
         created_at=now
     )
     
-    credit = Transaction(
+    trans_in = Transaction(
         account_id=dst_account.id,
         account_number=request.to_account_number,
-        type='credit',
+        type='transfer_in',
         amount=request.amount,
         currency=request.currency,
         related_account_id=src_account.id,
         related_account_number=request.from_account_number,
-        description='transfer in',
+        description=request.description if request.show_desc_both else None,
         created_at=now
     )
     
-    session.add(debit)
-    session.add(credit)
+    session.add(trans_out)
+    session.add(trans_in)
     session.commit()
-    session.refresh(src_account)
-    session.refresh(dst_account)
+    session.refresh(trans_out)
+    session.refresh(trans_in)
+
+    if not trans_out.id or not trans_in.id:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail='Transfer failed, please try again later'
+        )
     
     return TransferResponse(
+        transaction_id=trans_out.id,
+        transaction_number=trans_out.transaction_number,
+        from_account_number=request.from_account_number,
+        to_account_number=request.to_account_number,
+        amount=request.amount,
+        currency=request.currency,
+        fee=fee,
+        total_amount=request.amount + fee,
+        status='completed',
         message='Transfer completed successfully',
-        from_new_balance=src_account.balance,
-        to_new_balance=dst_account.balance
+        created_at=now,
     )
 
 
