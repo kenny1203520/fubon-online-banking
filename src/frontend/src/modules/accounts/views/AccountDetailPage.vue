@@ -66,6 +66,30 @@ const getStatusClass = (status: string): string => {
   return classMap[status] || ''
 }
 
+// 取得帳戶類型顯示文字
+const getAccountTypeText = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    'savings': '活期儲蓄',
+    'checking': '支票帳戶',
+    'fixed_deposit': '定期存款',
+    'foreign_currency': '外幣帳戶',
+    'investment': '投資帳戶'
+  }
+  return typeMap[type] || type
+}
+
+// 取得帳戶類型樣式類別
+const getAccountTypeClass = (type: string): string => {
+  const classMap: Record<string, string> = {
+    'savings': 'type-savings',
+    'checking': 'type-checking',
+    'fixed_deposit': 'type-fixed',
+    'foreign_currency': 'type-foreign',
+    'investment': 'type-investment'
+  }
+  return classMap[type] || ''
+}
+
 // 取得交易類型文字
 const getTransactionTypeText = (type: string): string => {
   const typeMap: Record<string, string> = {
@@ -190,7 +214,12 @@ onMounted(() => {
         <div class="account-card">
           <div class="card-header">
             <div>
-              <h2 class="account-name">{{ accountStore.currentAccount.full_name }}</h2>
+              <div class="account-title-row">
+                <h2 class="account-name">{{ accountStore.currentAccount.full_name }}</h2>
+                <span :class="['account-type-badge', getAccountTypeClass(accountStore.currentAccount.account_type)]">
+                  {{ getAccountTypeText(accountStore.currentAccount.account_type) }}
+                </span>
+              </div>
               <span class="account-id">帳戶 {{ accountStore.currentAccount.account_number }}</span>
             </div>
             <span :class="['account-status', getStatusClass(accountStore.currentAccount.status)]">
@@ -233,6 +262,10 @@ onMounted(() => {
           <!-- 基本資訊 Tab -->
           <div v-if="activeTab === 'info'" class="info-section">
             <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">帳戶類型</span>
+                <span class="info-value">{{ getAccountTypeText(accountStore.currentAccount.account_type) }}</span>
+              </div>
               <div class="info-item">
                 <span class="info-label">帳戶持有人</span>
                 <span class="info-value">{{ accountStore.currentAccount.full_name }}</span>
@@ -393,9 +426,50 @@ onMounted(() => {
   margin-bottom: 24px;
 }
 
+.account-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
 .account-name {
-  margin: 0 0 8px 0;
+  margin: 0;
   font-size: 24px;
+}
+
+.account-type-badge {
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.type-savings {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.type-checking {
+  background: #f3e5f5;
+  color: #6a1b9a;
+}
+
+.type-fixed {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.type-foreign {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.type-investment {
+  background: #fce4ec;
+  color: #c2185b;
 }
 
 .account-id {

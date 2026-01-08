@@ -174,15 +174,18 @@ async def open_account(request: AccountCreateRequest, current_user: User = Depen
             detail='invalid user information'
         )
 
-    # 檢查是否已經有相同身分證的帳戶
+    # 檢查是否已經有相同身分證且相同類型的帳戶
     existing = session.exec(
-        select(Account).where(Account.id_number == request.id_number)
+        select(Account).where(
+            Account.id_number == request.id_number,
+            Account.account_type == request.account_type
+        )
     ).first()
     
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail='此身分證號已有申請紀錄'
+            detail=f'此身分證號已申請過 {request.account_type} 類型的帳戶'
         )
     
     # 生成唯一的帳號
