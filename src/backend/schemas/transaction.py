@@ -1,12 +1,15 @@
 from typing import Optional, List
 from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator
 from datetime import datetime
+import uuid
 import uuid
 
 class TransactionResponse(BaseModel):
     id: int
     transaction_number: str
-    account_id: int
+    transaction_number: str
+    account_id: uuid.UUID
     type: str
     amount: float
     currency: str
@@ -14,8 +17,13 @@ class TransactionResponse(BaseModel):
     related_account: Optional[uuid.UUID] = None
     related_account_number: Optional[str] = None
     status: str
+    fee: float = 0.0
+    related_account: Optional[uuid.UUID] = None
+    related_account_number: Optional[str] = None
+    status: str
     description: Optional[str] = None
     created_at: str
+    updated_at: Optional[str] = None
     updated_at: Optional[str] = None
 
     class Config:
@@ -29,6 +37,7 @@ class TransactionList(BaseModel):
     total_pages: Optional[int] = None
 
 class TransactionQuery(BaseModel):
+    account_id: uuid.UUID
     account_id: uuid.UUID
     frm: Optional[str] = None
     to: Optional[str] = None
@@ -61,6 +70,12 @@ class TransferRequest(BaseModel):
         }
 
 class TransferResponse(BaseModel):
+    transaction_id: int
+    transaction_number: str
+    from_account: uuid.UUID
+    from_account_number: str
+    to_account: uuid.UUID
+    to_account_number: str
     transaction_number: str
     from_account: uuid.UUID
     from_account_number: str
@@ -70,7 +85,11 @@ class TransferResponse(BaseModel):
     fee: float
     total_amount: float  # 含手續費的總金額
     status: str
+    fee: float
+    total_amount: float  # 含手續費的總金額
+    status: str
     created_at: str
+    message: str
     message: str
 
     class Config:

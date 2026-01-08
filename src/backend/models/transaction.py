@@ -1,6 +1,7 @@
 from sqlmodel import Field, SQLModel
 from typing import Optional
 import uuid
+import uuid
 
 class Transaction(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -16,4 +17,5 @@ class Transaction(SQLModel, table=True):
     status: str = Field(default="completed") # pending, completed, failed, cancelled
     description: Optional[str] = None
     created_at: str
+    updated_at: Optional[str] = None
     updated_at: Optional[str] = None

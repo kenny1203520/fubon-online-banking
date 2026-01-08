@@ -5,6 +5,7 @@ from typing import Optional
 import random
 import string
 import uuid
+import uuid
 
 from models.account import Account
 from models.transaction import Transaction
@@ -14,7 +15,6 @@ from schemas.account import (
     CashlessRequest, CashlessResponse, AccountCreateResponse
 )
 from schemas.transaction import TransactionList, TransactionResponse
-from schemas.credit_card import TransferRequest, TransferResponse
 from core.database import get_session
 from core.auth import get_current_user
 
@@ -280,7 +280,9 @@ async def get_balance(
 async def get_transactions(
     account_id: str,
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100),
+    per_page: str,  # 改為 string 以支援 UUID
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100) = Query(10, ge=1, le=100),
     frm: Optional[str] = None,
     to: Optional[str] = None,
     current_user: User = Depends(get_current_user),
@@ -386,7 +388,7 @@ async def transfer(
     if request.amount <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail='amount must be positive'
+            detail='Invalid account ID format'
         )
     
     #  取得來源和目標帳戶
@@ -397,7 +399,7 @@ async def transfer(
     if not src_account or not dst_account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail='source or destination account not found'
+            detail='Account not found'
         )
     
     if not src_account.id or not dst_account.id:
@@ -406,10 +408,10 @@ async def transfer(
             detail='invalid account data'
         )
     
-    if src_account.balance < request.amount:
+    if account.user_id != current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='insufficient funds'
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Access denied'
         )
     
     # 檢查帳戶是否屬於當前用戶
@@ -455,10 +457,13 @@ async def transfer(
     session.commit()
     
     return {
-        'message': 'transfer completed',
-        'from_new_balance': src_account.balance,
-        'to_new_balance': dst_account.balance
+        'items': [TransactionResponse.from_orm(t) for t in transactions],
+        'page': page,
+        'per_page': per_page,
+        'total': total,
+        'total_pages': total_pages
     }
+
 
 @router.post('/cashless_withdraw', response_model=CashlessResponse)
 async def cashless_withdraw(
