@@ -17,6 +17,7 @@ class UserRegisterRequest(BaseModel):
     password: str
     email: Optional[str] = None
     admin_code: Optional[str] = None
+    role: Optional[str] = "user"
 
 class UserRegisterResponse(BaseModel):
     user_id: uuid.UUID
@@ -38,4 +39,4 @@ class UserMeResponse(BaseModel):
     user_id: uuid.UUID
     username: str
     email: Optional[str] = None
-    role: str = "user"
+    role: Optional[str] = "user"

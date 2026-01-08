@@ -143,7 +143,14 @@ async def register(request: UserRegisterRequest, session: Session = Depends(get_
     password_hash = hash_password(request.password)
     
     try:
-        role = "admin" if is_admin else "user"
+        if request.role == "admin":
+            admin_code = os.getenv("ADMIN_CODE")
+            if not admin_code or request.admin_code != admin_code:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail='invalid admin code'
+                )
+        role = request.role if request.role in ("admin", "user") else "user"
         user = User(
             username=request.username,
             password_hash=password_hash,
