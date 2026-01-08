@@ -111,7 +111,7 @@ async def apply_loan(
         term_months=request.term_months,
         monthly_payment=monthly_payment,
         remaining_balance=request.loan_amount,
-        status='pending',
+        status='approved',  # 立刻核准
         application_date=now.isoformat(),
         purpose=request.purpose,
         annual_income=request.annual_income,
@@ -125,8 +125,8 @@ async def apply_loan(
     
     return {
         'application_id': loan.id,
-        'status': 'pending',
-        'message': f'貸款申請已成功提交！預計利率：{interest_rate}%，月付金額：NT$ {monthly_payment:,.0f}'
+        'status': 'approved',
+        'message': f'恭喜！您的貸款申請已核准！利率：{interest_rate}%，月付金額：NT$ {monthly_payment:,.0f}'
     }
 
 @router.get('', response_model=LoanListResponse)

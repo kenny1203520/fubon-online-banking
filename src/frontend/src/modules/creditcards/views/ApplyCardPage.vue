@@ -345,7 +345,7 @@ const formatIncomeInput = () => {
 
         <!-- 成功詳情 -->
         <div v-if="successDetails" class="success-details">
-          <h3>🎉 信用卡申請已成功提交</h3>
+          <h3>🎉 信用卡申請已核准</h3>
           <div class="detail-item">
             <span class="detail-label">申請編號：</span>
             <span class="detail-value">{{ successDetails.applicationId }}</span>
@@ -354,7 +354,7 @@ const formatIncomeInput = () => {
             <span class="detail-label">卡片類型：</span>
             <span class="detail-value">{{ successDetails.cardName }}</span>
           </div>
-          <p class="detail-note">我們將在 3-5 個工作天內完成審核，結果將以簡訊通知您。</p>
+          <p class="detail-note">恭喜！您的信用卡申請已核准，卡片即將寄送到您的地址。</p>
         </div>
 
         <!-- 錯誤資訊 -->

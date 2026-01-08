@@ -82,7 +82,7 @@ async def apply_creditcard(
         employment_status=request.employment_status,
         company_name=request.company_name,
         position=request.position,
-        status='pending',
+        status='approved',  # 立刻核准
         created_at=datetime.now(timezone.utc).isoformat()
     )
     session.add(application)
@@ -91,9 +91,9 @@ async def apply_creditcard(
     
     return {
         'application_id': application.id,
-        'status': 'pending',
-        'message': '信用卡申請已成功提交，我們將在 3-5 個工作天內完成審核',
-        'estimated_processing_days': 5
+        'status': 'approved',
+        'message': '恭喜！您的信用卡申請已核准，卡片即將寄送到您的地址',
+        'estimated_processing_days': 0
     }
 
 @router.get("/{card_id}", name="取得信用卡詳情", status_code=status.HTTP_200_OK)
