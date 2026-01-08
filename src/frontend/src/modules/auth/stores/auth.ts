@@ -18,6 +18,15 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value && !!user.value)
 
   // Actions
+  const clearAuthState = () => {
+    tokenId.value = null
+    token.value = null
+    user.value = null
+    localStorage.removeItem(TOKEN_ID_KEY)
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(USER_KEY)
+  }
+
   const setTokenId = (newTokenId: string) => {
     tokenId.value = newTokenId
     localStorage.setItem(TOKEN_ID_KEY, newTokenId)
@@ -41,12 +50,7 @@ export const useAuthStore = defineStore('auth', () => {
       // 登入成功後獲取使用者資訊
       await getCurrentUser()
     } catch (error: unknown) {
-      tokenId.value = null
-      token.value = null
-      user.value = null
-      localStorage.removeItem(TOKEN_ID_KEY)
-      localStorage.removeItem(TOKEN_KEY)
-      localStorage.removeItem(USER_KEY)
+      clearAuthState()
       const err = error as { response?: { data?: { detail?: string } } }
       throw new Error(err.response?.data?.detail || '登入失敗')
     } finally {
@@ -74,12 +78,7 @@ export const useAuthStore = defineStore('auth', () => {
     const currentTokenId = tokenId.value
 
     // 立即清除本地數據，避免用戶等待
-    tokenId.value = null
-    token.value = null
-    user.value = null
-    localStorage.removeItem(TOKEN_ID_KEY)
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(USER_KEY)
+    clearAuthState()
 
     // 嘗試通知後端登出（不影響前端狀態）
     if (currentTokenId) {
@@ -104,7 +103,8 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (error) {
       console.error('獲取使用者資訊失敗:', error)
       // 如果獲取失敗，清除認證狀態
-      await logout()
+      clearAuthState()
+      throw error
     }
   }
 
@@ -149,8 +149,21 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const initAuth = async () => {
+    initializeAuth()
+    if (!token.value) return
+    try {
+      await verify()
+      if (!user.value) {
+        await getCurrentUser()
+      }
+    } catch (error) {
+      clearAuthState()
+    }
+  }
+
   // 初始化認證狀態
-  initializeAuth()
+  void initAuth()
 
   return {
     // State
