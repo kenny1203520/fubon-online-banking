@@ -38,6 +38,4 @@ class UserMeResponse(BaseModel):
     user_id: uuid.UUID
     username: str
     email: Optional[str] = None
-    is_admin: bool = False
-
-role: str = "user"
+    role: str = "user"

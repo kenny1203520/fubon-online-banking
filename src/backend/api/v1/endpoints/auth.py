@@ -143,25 +143,12 @@ async def register(request: UserRegisterRequest, session: Session = Depends(get_
     password_hash = hash_password(request.password)
     
     try:
-        is_admin = False
-        if request.admin_code:
-            expected = os.getenv("ADMIN_REGISTER_CODE")
-            if not expected:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="ADMIN_REGISTER_CODE is not configured"
-                )
-            if request.admin_code != expected:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="invalid admin code"
-                )
-            is_admin = True
+        role = "admin" if is_admin else "user"
         user = User(
             username=request.username,
             password_hash=password_hash,
             email=request.email,
-            is_admin=is_admin,
+            role=role,
             created_at=datetime.now(timezone.utc).isoformat()
         ) # 建立新使用者
         session.add(user) # 儲存使用者到資料庫
