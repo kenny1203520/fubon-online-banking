@@ -150,20 +150,26 @@ async def register(request: UserRegisterRequest, session: Session = Depends(get_
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail='invalid admin code'
                 )
+
+        # 決定角色與管理員旗標
         role = request.role if request.role in ("admin", "user") else "user"
+        is_admin_flag = role == "admin"
+
         user = User(
             username=request.username,
             password_hash=password_hash,
             email=request.email,
             phone=request.phone,
-            is_admin=is_admin,
+            is_admin=is_admin_flag,
             role=role,
             created_at=datetime.now(timezone.utc).isoformat()
         ) # 建立新使用者
+
         session.add(user) # 儲存使用者到資料庫
         session.commit() # 提交變更
         session.refresh(user) # 取得自動生成的ID
-    except Exception as e:
+
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail='username already exists'
