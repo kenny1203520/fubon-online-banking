@@ -8,8 +8,12 @@ class User(SQLModel, table=True):
     password_hash: str
     email: Optional[str] = Field(default=None, index=True)
     is_admin: bool = Field(default=False, index=True)
-    created_at: str
     role: str = Field(default="user", index=True)
+    created_at: str
+<<<<<<< HEAD
+    role: str = Field(default="user", index=True)
+=======
+>>>>>>> 42178abc6d30aa64bf7dfdfa6fa61e4bc1f88a65
 
 class SessionModel(SQLModel, table=True):
     """

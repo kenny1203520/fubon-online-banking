@@ -35,7 +35,8 @@ def generate_account_name(account_type: str) -> str:
     type_names = {
         'savings': '儲蓄帳戶',
         'checking': '支票帳戶',
-        'fixed_deposit': '定期存款帳戶'
+        'fixed_deposit': '定期存款帳戶',
+        'foreign_currency': '外幣帳戶'
     }
     return type_names.get(account_type, '一般帳戶')
 
@@ -155,7 +156,7 @@ async def open_account(request: AccountCreateRequest, current_user: User = Depen
     - email: Email address (電子郵件)
     - phone: Phone number (手機號碼)
     - address: Address (地址)
-    - account_type: Account type (帳戶類型: savings, checking, fixed_deposit)
+    - account_type: Account type (帳戶類型: savings, checking, fixed_deposit, foreign_currency)
     - initial_deposit: Initial deposit amount (初始存款金額)
     """
     # 驗證使用者身份
