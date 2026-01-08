@@ -45,7 +45,7 @@ export const useAccountStore = defineStore('account', () => {
     }
   }
 
-  const fetchAccountById = async (id: number) => {
+  const fetchAccountById = async (id: string) => {
     isLoading.value = true
     error.value = null
 
@@ -80,7 +80,7 @@ export const useAccountStore = defineStore('account', () => {
     }
   }
 
-  const getBalance = async (accountId: number) => {
+  const getBalance = async (accountId: string) => {
     try {
       const response = await accountService.getBalance(accountId)
 
@@ -105,7 +105,7 @@ export const useAccountStore = defineStore('account', () => {
     }
   }
 
-  const setCashless = async (accountId: number, enabled: boolean) => {
+  const setCashless = async (accountId: string, enabled: boolean) => {
     try {
       const response = await accountService.setCashless(accountId, enabled)
 
@@ -128,7 +128,7 @@ export const useAccountStore = defineStore('account', () => {
     }
   }
 
-  const fetchTransactions = async (accountId: number, filters?: TransactionFilters) => {
+  const fetchTransactions = async (accountId: string, filters?: TransactionFilters) => {
     isLoading.value = true
     error.value = null
 
@@ -145,7 +145,7 @@ export const useAccountStore = defineStore('account', () => {
     }
   }
 
-  const updateAccount = async (id: number, data: Partial<Account>) => {
+  const updateAccount = async (id: string, data: Partial<Account>) => {
     isLoading.value = true
     error.value = null
 
@@ -173,7 +173,7 @@ export const useAccountStore = defineStore('account', () => {
     }
   }
 
-  const deleteAccount = async (id: number) => {
+  const deleteAccount = async (id: string) => {
     isLoading.value = true
     error.value = null
 

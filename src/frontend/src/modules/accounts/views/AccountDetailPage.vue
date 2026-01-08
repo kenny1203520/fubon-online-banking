@@ -11,7 +11,7 @@ const accountStore = useAccountStore()
 
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
-const accountId = computed(() => parseInt(route.params.id as string))
+const accountId = computed(() => route.params.id as string)
 
 // Tab 狀態
 const activeTab = ref<'info' | 'transactions'>('info')
