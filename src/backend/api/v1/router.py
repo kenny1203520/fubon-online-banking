@@ -37,7 +37,6 @@ api_router.include_router(
     investments.router, 
     prefix="/investments", 
     tags=["投資理財"],
-    dependencies=[Depends(security)]
 )
 
 # Loan management routes (貸款管理路由)

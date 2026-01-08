@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import InvestmentsNav from '../components/InvestmentsNav.vue'
 </script>
 
 <template>
   <div class="page-wrapper">
+    <InvestmentsNav />
     <div class="page-header">
       <h1>保險</h1>
       <p>購買保險產品</p>

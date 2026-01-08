@@ -5,6 +5,7 @@ from fastapi.responses import RedirectResponse
 from contextlib import asynccontextmanager
 from api.v1.router import api_router
 from core.database import create_db_and_tables
+from data.seed import seed_all
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -13,6 +14,12 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     create_db_and_tables()
+    try:
+        # Seed initial data (products etc.)
+        seed_all()
+    except Exception:
+        # Do not prevent app from starting if seeding fails
+        pass
     yield
     # Shutdown
     pass
